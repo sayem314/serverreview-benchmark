@@ -1,3 +1,7 @@
+#serverreview-benchmark
+
+<h5>Parameters</h5>
+
 <p>System Information</p>
 
 <p><code>bench.sh -info</code></p>
@@ -37,3 +41,8 @@
 <p>About</p>
 
 <p><code>bench.sh -about</code>
+
+
+<h6>Credits</h6>
+
+Thanks to @camarg for the the original script. Thanks to @dmmcintyre3 for the modified version. Thanks @Hidden_Refuge for update bench-sh-2.
