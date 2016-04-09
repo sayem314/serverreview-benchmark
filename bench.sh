@@ -4,7 +4,7 @@ about () {
 	echo "  ========================================================= "
 	echo "  \             Serverreview Benchmark Script             / "
 	echo "  \       Basic system info, I/O test and speedtest       / "
-	echo "  \                V 2.2.2  (24 Mar 2015)                   / "
+	echo "  \                V 2.2.3  (09 Apr 2016)                   / "
 	echo "  \             Created by Sayem Chowdhury                / "
 	echo "  ========================================================= "
 	echo ""
@@ -14,22 +14,22 @@ about () {
 	echo ""
 }
 prms () {
-	echo "  -info          - Check basic system information" | sed $'s/ -info/\e[1m&\e[0m/'
-	echo "  -io            - Run I/O test with or w/ cache" | sed $'s/ -io/\e[1m&\e[0m/'
-	echo "  -cdn           - Check download speed from CDN" | sed $'s/ -cdn/\e[1m&\e[0m/'
-	echo "  -northamercia  - Download speed from North America" | sed $'s/ -northamercia/\e[1m&\e[0m/'
-	echo "  -europe        - Download speed from Europe" | sed $'s/ -europe/\e[1m&\e[0m/'
-	echo "  -asia          - Download speed from asia" | sed $'s/ -asia/\e[1m&\e[0m/'
-	echo "  -a             - Test and check all above things at once" | sed $'s/ -a/\e[1m&\e[0m/'
-	echo "  -b             - System info, CDN speedtest and I/O test" | sed $'s/ -b/\e[1m&\e[0m/'
-	echo "  -ispeed        - Install speedtest-cli (python 2.4-3.4 required)" | sed $'s/ -ispeed/\e[1m&\e[0m/'
-	echo "  -speed         - Check internet speed using speedtest-cli" | sed $'s/ -speed/\e[1m&\e[0m/'
-	echo "  -about         - Check about this script" | sed $'s/ -about/\e[1m&\e[0m/'
+	echo "  $(tput setaf 3)-info$(tput sgr0)          - Check basic system information"
+	echo "  $(tput setaf 3)-io$(tput sgr0)            - Run I/O test with or w/ cache"
+	echo "  $(tput setaf 3)-cdn$(tput sgr0)           - Check download speed from CDN"
+	echo "  $(tput setaf 3)-northamercia$(tput sgr0)  - Download speed from North America"
+	echo "  $(tput setaf 3)-europe$(tput sgr0)        - Download speed from Europe"
+	echo "  $(tput setaf 3)-asia$(tput sgr0)          - Download speed from asia"
+	echo "  $(tput setaf 3)-a$(tput sgr0)             - Test and check all above things at once"
+	echo "  $(tput setaf 3)-b$(tput sgr0)             - System info, CDN speedtest and I/O test"
+	echo "  $(tput setaf 3)-ispeed$(tput sgr0)        - Install speedtest-cli (python 2.4-3.4 required)"
+	echo "  $(tput setaf 3)-speed$(tput sgr0)         - Check internet speed using speedtest-cli"
+	echo "  $(tput setaf 3)-about$(tput sgr0)         - Check about this script"
 	echo ""
 }
 howto () {
-	echo "Wrong parameters. Use 'bash bench -help' to see parameters" | sed $'s/bash bench -help/\e[1m&\e[0m/'
-	echo "ex: 'bash bench -info' (without quotes) for system information" | sed $'s/bash bench -info/\e[1m&\e[0m/'
+	echo "Wrong parameters. Use $(tput setaf 3)bash bench -help$(tput sgr0) to see parameters"
+	echo "ex: $(tput setaf 3)bash bench -info$(tput sgr0) (without quotes) for system information"
 	echo ""
 }
 systeminfo () {
@@ -49,7 +49,7 @@ systeminfo () {
 	uptime=$( awk '{print int($1/86400)"days - "int($1%86400/3600)"hrs "int(($1%3600)/60)"min "int($1%60)"sec"}' /proc/uptime )
 	# Systeminfo
 	echo ""
-	echo " ##System Information" | sed $'s/ ##System Information/\e[93m&\e[0m/'
+	echo " $(tput setaf 6)##System Information$(tput sgr0)"
 	echo ""
 	# OS Information (Name)
 	if [ "$cpubits" == 'x86_64' ]; then
@@ -89,6 +89,36 @@ systeminfo () {
 	echo -e " OS Name:    "${so:0:($pos+2)} $extra$bits
 	fi
 	sleep 0.1
+	#Detect virtualization
+	if hash ifconfig 2>/dev/null; then
+	eth=`ifconfig`
+	fi
+	virtualx=`dmesg`
+	if [[ "$eth" == *eth0* ]]; 
+	then
+	virtual="Dedicated"
+	elif [[ "$virtualx" == *kvm-clock* ]]; 
+	then
+	virtual="KVM"
+	elif [[ "$virtualx" == *"VMware Virtual Platform"* ]]; 
+	then
+	virtual="VMware"
+	elif [[ "$virtualx" == *"Parallels Software International"* ]]; 
+	then
+	virtual="Parallels"
+	elif [[ "$virtualx" == *VirtualBox* ]]; 
+	then
+	virtual="VirtualBox"
+	elif [ -f /proc/user_beancounters ]
+	then
+	virtual="OpenVZ"
+	elif [ -e /proc/xen ]
+	then
+	virtual="Xen"
+	fi
+	#Kernel
+	echo " Kernel:     $virtual / $kernel"
+	sleep 0.1
 	# Hostname
 	echo " Hostname:   $hostname"
 	sleep 0.1
@@ -111,7 +141,7 @@ systeminfo () {
 	# Swap Information
 	if [ "$tswap0" = '0kB' ]
 	then
-	echo " Total SWAP: You do not have SWAP enabled"
+	echo " Total SWAP: SWAP not enabled"
 	else
 	echo " Total SWAP: $tswap (Free $fswap)"
 	fi
@@ -123,13 +153,15 @@ systeminfo () {
 	echo ""
 }
 cdnspeedtest () {
-	echo ""; echo " ##CDN Speedtest" | sed $'s/ ##CDN Speedtest/\e[93m&\e[0m/'
+	echo ""
+	echo " $(tput setaf 6)##CDN Speedtest$(tput sgr0)"
 	cachefly=$( wget -O /dev/null http://cachefly.cachefly.net/100mb.test 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' ); echo " CacheFly:  $cachefly"
 	internode=$( wget -O /dev/null http://speedcheck.cdn.on.net/100meg.test 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' ); echo " Internode: $internode"
 	echo ""
 }
 northamerciaspeedtest () {
-	echo ""; echo " ##North America Speedtest" | sed $'s/ ##North America Speedtest/\e[93m&\e[0m/'
+	echo ""
+	echo " $(tput setaf 6)##North America Speedtest$(tput sgr0)"
 	nas1=$( wget -O /dev/null http://speedtest.dal01.softlayer.com/downloads/test100.zip 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
 	echo " SoftLayer, Dallas, USA: $nas1"
 	nas2=$( wget -O /dev/null http://speedtest.choopa.net/100MBtest.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
@@ -149,7 +181,8 @@ northamerciaspeedtest () {
 	echo ""
 }
 europespeedtest () {
-	echo ""; echo " ##Europe Speedtest" | sed $'s/ ##Europe Speedtest/\e[93m&\e[0m/'
+	echo ""
+	echo " $(tput setaf 6)##Europe Speedtest$(tput sgr0)"
 	es1=$( wget -O /dev/null http://149.3.140.170/100.log 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
 	echo " RedStation, Gosport, UK: $es1"
 	es2=$( wget -O /dev/null http://se.edis.at/100MB.test 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
@@ -169,7 +202,8 @@ europespeedtest () {
 	echo ""
 }
 asiaspeedtest () {
-	echo ""; echo " ##Asia Speedtest" | sed $'s/ ##Asia Speedtest/\e[93m&\e[0m/'
+	echo ""
+	echo " $(tput setaf 6)##Asia Speedtest$(tput sgr0)"
 	as1=$( wget -O /dev/null http://speedtest.sng01.softlayer.com/downloads/test100.zip 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
 	echo " SoftLayer, Singapore, Singapore $as1"
 	as2=$( wget -O /dev/null http://speedtest.singapore.linode.com/100MB-singapore.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
@@ -181,7 +215,8 @@ asiaspeedtest () {
 	echo ""
 }
 iotest () {
-	echo ""; echo " ##IO Test" | sed $'s/ ##IO Test/\e[93m&\e[0m/'
+	echo ""
+	echo " $(tput setaf 6)##IO Test$(tput sgr0)"
 	io=$( ( dd if=/dev/zero of=test bs=64k count=16k conv=fdatasync && rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
 	echo " I/O Speed : $io"
 	io=$( ( dd if=/dev/zero of=test bs=64k count=16k conv=fdatasync oflag=direct && rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
