@@ -36,6 +36,7 @@ systeminfo () {
 	hostname=$( hostname )
 	cpumodel=$( awk -F: '/model name/ {name=$2} END {print name}' /proc/cpuinfo )
 	cpubits=$( uname -m )
+	kernel=$( uname -r )
 	cores=$( awk -F: '/model name/ {core++} END {print core}' /proc/cpuinfo )
 	corescache=$( awk -F: '/cache size/ {cache=$2} END {print cache}' /proc/cpuinfo )
 	freq=$( awk -F: ' /cpu MHz/ {freq=$2} END {print freq}' /proc/cpuinfo )
