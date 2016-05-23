@@ -1,5 +1,9 @@
 #serverreview-benchmark
 
+<h5>Download</h5>
+
+<code>wget https://git.io/bench.sh</code>
+
 <h5>Parameters</h5>
 
 <p>System Information</p>
