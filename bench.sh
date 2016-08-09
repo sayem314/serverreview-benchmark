@@ -4,7 +4,7 @@ about () {
 	echo "  ========================================================= "
 	echo "  \             Serverreview Benchmark Script             / "
 	echo "  \       Basic system info, I/O test and speedtest       / "
-	echo "  \                V 2.2.3  (09 Apr 2016)                   / "
+	echo "  \                V 2.2.4  (09 Aug 2016)                   / "
 	echo "  \             Created by Sayem Chowdhury                / "
 	echo "  ========================================================= "
 	echo ""
@@ -28,8 +28,9 @@ prms () {
 	echo ""
 }
 howto () {
-	echo "Wrong parameters. Use $(tput setaf 3)bash bench -help$(tput sgr0) to see parameters"
-	echo "ex: $(tput setaf 3)bash bench -info$(tput sgr0) (without quotes) for system information"
+	echo ""
+	echo "  Wrong parameters. Use $(tput setaf 3)bash bench -help$(tput sgr0) to see parameters"
+	echo "  ex: $(tput setaf 3)bash bench -info$(tput sgr0) (without quotes) for system information"
 	echo ""
 }
 systeminfo () {
@@ -47,19 +48,19 @@ systeminfo () {
 	tswap=$( free -h | grep Swap | awk 'NR=1 {print $2}' )B
 	tswap0=$( cat /proc/meminfo | grep SwapTotal | awk 'NR=1 {print $2$3}' )
 	fswap=$( free -h | grep Swap | awk 'NR=1 {print $4}' )B
-	uptime=$( awk '{print int($1/86400)"days - "int($1%86400/3600)"hrs "int(($1%3600)/60)"min "int($1%60)"sec"}' /proc/uptime )
+
 	# Systeminfo
 	echo ""
 	echo " $(tput setaf 6)##System Information$(tput sgr0)"
 	echo ""
+
 	# OS Information (Name)
 	if [ "$cpubits" == 'x86_64' ]; then
 	bits=" (64 bit)"
 	else
 	bits=" (32 bit)"
 	fi
-	if hash lsb_release 2>/dev/null; 
-	then
+	if hash lsb_release 2>/dev/null; then
 	soalt=`lsb_release -d`
 	echo -e " OS Name:    "${soalt:13} $bits
 	else
@@ -67,21 +68,17 @@ systeminfo () {
 	pos=`expr index "$so" 123456789`
 	so=${so/\/}
 	extra=""
-	if [[ "$so" == Debian*6* ]]; 
-	then
+	if [[ "$so" == Debian*6* ]]; then
 	extra="(squeeze)"
 	fi
-	if [[ "$so" == Debian*7* ]]; 
-	then
+	if [[ "$so" == Debian*7* ]]; then
 	extra="(wheezy)"
 	fi
-	if [[ "$so" == *Proxmox* ]]; 
-	then
+	if [[ "$so" == *Proxmox* ]]; then
 	so="Debian 7.6 (wheezy)";
 	fi
 	otro=`expr index "$so" \S`
-	if [[ "$otro" == 2 ]]; 
-	then
+	if [[ "$otro" == 2 ]]; then
 	so=`cat /etc/*-release`
 	pos=`expr index "$so" NAME`
 	pos=$((pos-2))
@@ -90,42 +87,40 @@ systeminfo () {
 	echo -e " OS Name:    "${so:0:($pos+2)} $extra$bits
 	fi
 	sleep 0.1
+
 	#Detect virtualization
 	if hash ifconfig 2>/dev/null; then
 	eth=`ifconfig`
 	fi
 	virtualx=`dmesg`
-	if [[ "$eth" == *eth0* ]]; 
-	then
-	virtual="Dedicated"
-	elif [[ "$virtualx" == *kvm-clock* ]]; 
-	then
-	virtual="KVM"
-	elif [[ "$virtualx" == *"VMware Virtual Platform"* ]]; 
-	then
-	virtual="VMware"
-	elif [[ "$virtualx" == *"Parallels Software International"* ]]; 
-	then
-	virtual="Parallels"
-	elif [[ "$virtualx" == *VirtualBox* ]]; 
-	then
-	virtual="VirtualBox"
-	elif [ -f /proc/user_beancounters ]
-	then
+	if [[ -f /proc/user_beancounters ]]; then
 	virtual="OpenVZ"
-	elif [ -e /proc/xen ]
-	then
+	elif [[ "$virtualx" == *kvm-clock* ]]; then
+	virtual="KVM"
+	elif [[ "$virtualx" == *"VMware Virtual Platform"* ]]; then
+	virtual="VMware"
+	elif [[ "$virtualx" == *"Parallels Software International"* ]]; then
+	virtual="Parallels"
+	elif [[ "$virtualx" == *VirtualBox* ]]; then
+	virtual="VirtualBox"
+	elif [ "$eth" == *eth0* ];then
+	virtual="Dedicated"
+	elif [ -e /proc/xen ]; then
 	virtual="Xen"
 	fi
+
 	#Kernel
 	echo " Kernel:     $virtual / $kernel"
 	sleep 0.1
+
 	# Hostname
 	echo " Hostname:   $hostname"
 	sleep 0.1
+
 	# CPU Model Name
 	echo " CPU Model: $cpumodel"
 	sleep 0.1
+
 	# Cpu Cores
 	if [ $cores=1 ]
 	then
@@ -136,9 +131,11 @@ systeminfo () {
 	sleep 0.1
 	echo " CPU Cache: $corescache"
 	sleep 0.1
+
 	# Ram Information
 	echo " Total RAM:  $tram (Free $fram)"
 	sleep 0.1
+
 	# Swap Information
 	if [ "$tswap0" = '0kB' ]
 	then
@@ -149,8 +146,19 @@ systeminfo () {
 	sleep 0.1
 	echo " Total Space: $hdd ($hddfree used)"
 	sleep 0.1
+
 	# Uptime
-	echo " Running for: $uptime"
+	secs=$( awk '{print $1}' /proc/uptime | cut -f1 -d"." )
+	if [[ $secs -lt 120 ]]; then
+		sysuptime="$secs seconds"
+	elif [[ $secs -lt 3600 ]]; then
+		sysuptime="`printf '%d minutes %d seconds\n' $(($secs%3600/60)) $(($secs%60))`"
+	elif [[ $secs -lt 86400 ]]; then
+			sysuptime="`printf '%dhrs %dmin %dsec\n' $(($secs/3600)) $(($secs%3600/60)) $(($secs%60))`"
+	else
+		sysuptime="`echo $((secs/86400))"days - "$(date -d "1970-01-01 + $secs seconds" "+%Hhrs %Mmin %Ssec")`"
+	fi
+	echo " Running for: $sysuptime"
 	echo ""
 }
 cdnspeedtest () {
