@@ -4,7 +4,7 @@ about () {
 	echo "  ========================================================= "
 	echo "  \             Serverreview Benchmark Script             / "
 	echo "  \       Basic system info, I/O test and speedtest       / "
-	echo "  \                V 2.2.4  (09 Aug 2016)                   / "
+	echo "  \                V 2.2.5  (26 Aug 2016)                   / "
 	echo "  \             Created by Sayem Chowdhury                / "
 	echo "  ========================================================= "
 	echo ""
@@ -34,10 +34,8 @@ howto () {
 	echo ""
 }
 systeminfo () {
-	hostname=$( hostname )
 	cpumodel=$( awk -F: '/model name/ {name=$2} END {print name}' /proc/cpuinfo )
 	cpubits=$( uname -m )
-	kernel=$( uname -r )
 	cores=$( awk -F: '/model name/ {core++} END {print core}' /proc/cpuinfo )
 	corescache=$( awk -F: '/cache size/ {cache=$2} END {print cache}' /proc/cpuinfo )
 	freq=$( awk -F: ' /cpu MHz/ {freq=$2} END {print freq}' /proc/cpuinfo )
@@ -110,11 +108,11 @@ systeminfo () {
 	fi
 
 	#Kernel
-	echo " Kernel:     $virtual / $kernel"
+	echo " Kernel:     $virtual / `uname -r`"
 	sleep 0.1
 
 	# Hostname
-	echo " Hostname:   $hostname"
+	echo " Hostname:   `hostname`"
 	sleep 0.1
 
 	# CPU Model Name
@@ -165,7 +163,6 @@ cdnspeedtest () {
 	echo ""
 	echo " $(tput setaf 6)##CDN Speedtest$(tput sgr0)"
 	cachefly=$( wget -O /dev/null http://cachefly.cachefly.net/100mb.test 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' ); echo " CacheFly:  $cachefly"
-	internode=$( wget -O /dev/null http://speedcheck.cdn.on.net/100meg.test 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' ); echo " Internode: $internode"
 	echo ""
 }
 northamerciaspeedtest () {
