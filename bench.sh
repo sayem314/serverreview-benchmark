@@ -2,12 +2,14 @@
 # serverreview-benchmark by @sayem314
 # Github: https://github.com/sayem314/serverreview-benchmark
 
+# shellcheck disable=SC1117,SC2086,SC2003,SC1001,SC2116,SC2046
+
 about () {
 	echo ""
 	echo "  ========================================================= "
 	echo "  \             Serverreview Benchmark Script             / "
 	echo "  \       Basic system info, I/O test and speedtest       / "
-	echo "  \                V 2.3.0  (14 Dec 2017)                   / "
+	echo "  \               V 2.3.1  (14 Dec 2017)                  / "
 	echo "  \             Created by Sayem Chowdhury                / "
 	echo "  ========================================================= "
 	echo ""
@@ -50,7 +52,7 @@ systeminfo () {
 	hdd=$( df -h --total | grep 'total' | awk '{print $2}' )B
 	hddfree=$( df -h --total | grep 'total' | awk '{print $5}' )
 	tswap=$( free -h | grep Swap | awk 'NR=1 {print $2}' )B
-	tswap0=$( cat /proc/meminfo | grep SwapTotal | awk 'NR=1 {print $2$3}' )
+	tswap0=$( grep SwapTotal < /proc/meminfo | awk 'NR=1 {print $2$3}' )
 	fswap=$( free -h | grep Swap | awk 'NR=1 {print $4}' )B
 
 	# Systeminfo
@@ -69,15 +71,18 @@ systeminfo () {
 		soalt=$(lsb_release -d)
 		echo -e " OS Name:    "${soalt:13} $bits
 	else
-		so=$(cat /etc/issue)
+		so=$(awk 'NF' /etc/issue)
 		pos=$(expr index "$so" 123456789)
 		so=${so/\/}
 		extra=""
-		if [[ "$so" == Debian*6* ]]; then
-			extra="(squeeze)"
-		fi
-		if [[ "$so" == Debian*7* ]]; then
+		if [[ "$so" == Debian*9* ]]; then
+			extra="(stretch)"
+		elif [[ "$so" == Debian*8* ]]; then
+			extra="(jessie)"
+		elif [[ "$so" == Debian*7* ]]; then
 			extra="(wheezy)"
+		elif [[ "$so" == Debian*6* ]]; then
+			extra="(squeeze)"
 		fi
 		if [[ "$so" == *Proxmox* ]]; then
 			so="Debian 7.6 (wheezy)";
@@ -89,7 +94,8 @@ systeminfo () {
 			pos=$((pos-2))
 			so=${so/\/}
 		fi
-		echo -e " OS Name:    "${so:0:($pos+2)} $extra$bits
+		echo -e " OS Name:    "${so:0:($pos+2)}$extra$bits | tr -d '\n'
+		echo ""
 	fi
 	sleep 0.1
 
@@ -108,7 +114,7 @@ systeminfo () {
 		virtual="Parallels"
 	elif [[ "$virtualx" == *VirtualBox* ]]; then
 		virtual="VirtualBox"
-	elif [ "$eth" == *eth0* ];then
+	elif [[ "$eth" == *eth0* ]];then
 		virtual="Dedicated"
 	elif [[ -e /proc/xen ]]; then
 		virtual="Xen"
@@ -155,9 +161,9 @@ systeminfo () {
 	if [[ $secs -lt 120 ]]; then
 		sysuptime="$secs seconds"
 	elif [[ $secs -lt 3600 ]]; then
-		sysuptime=$( printf '%d minutes %d seconds\n' $(($secs%3600/60)) $(($secs%60)) )
+		sysuptime=$( printf '%d minutes %d seconds\n' $((secs%3600/60)) $((secs%60)) )
 	elif [[ $secs -lt 86400 ]]; then
-			sysuptime=$( printf '%dhrs %dmin %dsec\n' $(($secs/3600)) $(($secs%3600/60)) $(($secs%60)) )
+		sysuptime=$( printf '%dhrs %dmin %dsec\n' $((secs/3600)) $((secs%3600/60)) $((secs%60)) )
 	else
 		sysuptime=$( echo $((secs/86400))"days - "$(date -d "1970-01-01 + $secs seconds" "+%Hhrs %Mmin %Ssec") )
 	fi
