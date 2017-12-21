@@ -9,7 +9,7 @@ about () {
 	echo "  ========================================================= "
 	echo "  \             Serverreview Benchmark Script             / "
 	echo "  \       Basic system info, I/O test and speedtest       / "
-	echo "  \               V 2.3.1  (14 Dec 2017)                  / "
+	echo "  \               V 2.3.2  (21 Dec 2017)                  / "
 	echo "  \             Created by Sayem Chowdhury                / "
 	echo "  ========================================================= "
 	echo ""
@@ -177,8 +177,15 @@ cdnspeedtest () {
 	cachefly=$( wget -O /dev/null http://cachefly.cachefly.net/100mb.test 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
 	echo " CacheFly:  $cachefly"
 
-	gdrive=$( wget -O /dev/null "https://doc-00-48-docs.googleusercontent.com/docs/securesc/ha0ro937gcuc7l7deffksulhg5h7mbp1/8gcbhohheb8c39lr2aafdrsdushc6q1e/1513245600000/01596048466545378513/*/1EcDdTYwJNBIXx_BL6pzEkjTD_pkCbYni?e=download" 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Gdrive:  $gdrive"
+	# google drive speed test
+	TMP_COOKIES="/tmp/cookies.txt"
+	TMP_FILE="/tmp/gdrive"
+	FILE_ID="1EcDdTYwJNBIXx_BL6pzEkjTD_pkCbYni"
+	if wget -q --save-cookies $TMP_COOKIES -O "$TMP_FILE" "https://drive.google.com/uc?id=$FILE_ID&export=download"; then
+		D_ID=$( grep "confirm=" < $TMP_FILE | awk -F "confirm=" '{ print $NF }' | awk -F "&amp" '{ print $1 }' )
+		gdrive=$( wget --load-cookies $TMP_COOKIES -O /dev/null "https://drive.google.com/uc?export=download&confirm=$D_ID&id=$FILE_ID" 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
+		echo " Gdrive:  $gdrive"
+	fi
 	echo ""
 }
 
