@@ -2,7 +2,7 @@
 
 ##### Download
 
-`curl -Ls git.io/bench.sh; chmod +x bench.sh`
+`curl -Ls git.io/bench.sh -o bench.sh; chmod +x bench.sh`
 
 ##### Usage
 
