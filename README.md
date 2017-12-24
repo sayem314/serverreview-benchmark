@@ -1,52 +1,44 @@
-#serverreview-benchmark
+## serverreview-benchmark
 
-<h5>Download</h5>
+##### Download
 
-<code>wget https://git.io/bench.sh && chmod +x bench.sh</code>
+`curl -Ls git.io/bench.sh; chmod +x bench.sh`
 
-<h5>Parameters</h5>
+##### Usage
 
-<p>System Information</p>
+`./bench.sh` `ARG` `PRM(Optional)`
 
-<p><code>./bench.sh -info</code></p>
+Example: `./bench.sh -b share`
 
-<p>I/O Test</p>
+##### Arguments
 
-<p><code>./bench.sh -io</code></p>
+`./bench.sh -info` # System Information
 
-<p>CDN Download (200MB)</p>
+`/bench.sh -io` # I/O Test
 
-<p><code>./bench.sh -cdn</code></p>
+`./bench.sh -cdn` # CDN Download (200MB)
 
-<p>North America Download (800MB)</p>
+`./bench.sh -northamerica` # North America Download (800MB)
 
-<p><code>./bench.sh -northamerica</code></p>
+`./bench.sh -europe` # Europe Download (900MB)
 
-<p>Europe Download (900MB)</p>
+`./bench.sh -asia` # Asia Download (400MB)
 
-<p><code>./bench.sh -europe</code></p>
+`./bench.sh -b` # System Info + CDN Download + I/O Test
 
-<p>Asia Download (400MB)</p>
+`./bench.sh -a` # All In One Command
 
-<p><code>./bench.sh -asia</code></p>
+`./bench.sh -help` # Show help
 
-<p>System Info + CDN Download + I/O Test</p>
+`./bench.sh -about` # Show about
 
-<p><code>./bench.sh -b</code></p>
+##### Parameters
 
-<p>All In One Command</p>
+`share` # upload results (default to hastebin)
 
-<p><code>./bench.sh -a</code></p>
-
-<p>Help</p>
-
-<p><code>./bench.sh -help</code></p>
-
-<p>About</p>
-
-<p><code>./bench.sh -about</code>
+`ubuntu` # upload results to ubuntu paste
 
 
-<h6>Credits</h6>
+##### _Credits_
 
-Thanks to @camarg for the the original script. Thanks to @dmmcintyre3 for the modified version. Thanks @Hidden_Refuge for update bench-sh-2.
+Thanks to `@camarg` for the the original script. Thanks to `@dmmcintyre3` for the modified version. Thanks `@Hidden_Refuge` for update bench-sh-2.
