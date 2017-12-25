@@ -2,7 +2,7 @@
 # serverreview-benchmark by @sayem314
 # Github: https://github.com/sayem314/serverreview-benchmark
 
-# shellcheck disable=SC1117,SC2086,SC2003,SC1001,SC2116,SC2046
+# shellcheck disable=SC1117,SC2086,SC2003,SC1001,SC2116,SC2046,2128,2124
 
 about () {
 	echo ""
@@ -47,12 +47,18 @@ howto () {
 
 log="$HOME/bench.log"
 ARG="$BASH_SOURCE $@"
-> $log
+benchram="/mnt/tmpbenchram"
+true > $log
 
 cancel () {
 	echo ""
 	rm -f test
 	echo " Abort"
+	if [[ -d $benchram ]]; then
+		rm $benchram/zero
+		umount $benchram
+		rm -rf $benchram
+	fi
 	exit
 }
 
@@ -157,13 +163,13 @@ systeminfo () {
 	sleep 0.1
 
 	# RAM Information
-	tram=$( free -m | grep Mem | awk 'NR=1 {print $2}' )MiB
-	fram=$( free -m | grep Mem | awk 'NR=1 {print $4}' )MiB
+	tram="$( free -m | grep Mem | awk 'NR=1 {print $2}' ) MiB"
+	fram="$( free -m | grep Mem | awk 'NR=1 {print $4}' ) MiB"
 	echo " Total RAM   : $tram (Free $fram)" | tee -a $log
 	sleep 0.1
 
 	# Swap Information
-	tswap=$( free -m | grep Swap | awk 'NR=1 {print $2}' )MiB
+	tswap="$( free -m | grep Swap | awk 'NR=1 {print $2}' ) MiB"
 	tswap0=$( grep SwapTotal < /proc/meminfo | awk 'NR=1 {print $2$3}' )
 	if [[ "$tswap0" == "0kB" ]]; then
 		echo " Total SWAP  : SWAP not enabled" | tee -a $log
@@ -216,12 +222,16 @@ human_readable() {
 # main function for speed checking
 # the report speed are average per file
 speed() {
-	printf " $1" | tee -a $log
+	# print name
+	printf "%s" " $1" | tee -a $log
+
+	# ping one time
 	ping_link=$( echo ${2#*//} | cut -d"/" -f1 )
 	ping_ms=$( ping -c1 $ping_link | grep 'rtt' | cut -d"/" -f5 )ms
 
+	# get download speed and print
 	cdl=$( curl -m 5 -w '%{speed_download}\n' -o /dev/null -s "$2" )
-	printf "$(human_readable $cdl)/s (ping $ping_ms)\n" | tee -a $log
+	printf "%s\n" "$(human_readable $cdl)/s (ping $ping_ms)" | tee -a $log
 }
 
 # 3 location (300MB)
@@ -241,9 +251,9 @@ cdnspeedtest () {
 	printf " Gdrive   :"  | tee -a $log
 	curl -c $TMP_COOKIES -o $TMP_FILE -s "https://$DRIVE/uc?id=$FILE_ID&export=download"
 	D_ID=$( grep "confirm=" < $TMP_FILE | awk -F "confirm=" '{ print $NF }' | awk -F "&amp" '{ print $1 }' )
-	curldownload=$( curl -m 5 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o /dev/null \
+	cdl=$( curl -m 5 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o /dev/null \
 		-s "https://$DRIVE/uc?export=download&confirm=$D_ID&id=$FILE_ID" )
-	printf "$(human_readable $cdl)/s (ping $( ping -c1 $DRIVE | grep 'rtt' | cut -d"/" -f5 )ms)\n" | tee -a $log
+	printf "%s" "$(human_readable $cdl)/s (ping $( ping -c1 $DRIVE | grep 'rtt' | cut -d"/" -f5 )ms)\n" | tee -a $log
 	echo "" | tee -a $log
 }
 
@@ -306,33 +316,83 @@ asiaspeedtest () {
 	echo "" | tee -a $log
 }
 
-iotest () {
+freedisk() {
 	# check free space
 	freespace=$( df -m . | awk 'NR==2 {print $4}' )
 	if [[ $freespace -ge 1024 ]]; then
-		writemb=16k
+		printf "%s" $((1024*2))
 	elif [[ $freespace -ge 512 ]]; then
-			writemb=8k
+		printf "%s" $((512*2))
 	elif [[ $freespace -ge 256 ]]; then
-			writemb=4k
+		printf "%s" $((256*2))
+	elif [[ $freespace -ge 128 ]]; then
+		printf "%s" $((128*2))
 	else
-		writemb=no
+		printf 1
 	fi
+}
 
+averageio() {
+	ioraw1=$( echo $1 | awk 'NR==1 {print $1}' )
+		[ "$(echo $1 | awk 'NR==1 {print $2}')" == "GB/s" ] && ioraw1=$( awk 'BEGIN{print '$ioraw1' * 1024}' )
+	ioraw2=$( echo $2 | awk 'NR==1 {print $1}' )
+		[ "$(echo $2 | awk 'NR==1 {print $2}')" == "GB/s" ] && ioraw2=$( awk 'BEGIN{print '$ioraw2' * 1024}' )
+	ioraw3=$( echo $3 | awk 'NR==1 {print $1}' )
+		[ "$(echo $3 | awk 'NR==1 {print $2}')" == "GB/s" ] && ioraw3=$( awk 'BEGIN{print '$ioraw3' * 1024}' )
+	ioall=$( awk 'BEGIN{print '$ioraw1' + '$ioraw2' + '$ioraw3'}' )
+	ioavg=$( awk 'BEGIN{printf "%.1f", '$ioall' / 3}' )
+	printf "%s" "$ioavg"
+}
+
+iotest () {
 	echo "" | tee -a $log
 	echostyle "## IO Test"
 	echo "" | tee -a $log
 
 	# start testing
-	if [[ $writemb != "no" ]]; then
-		io=$( ( dd if=/dev/zero of=test bs=64k count=16k conv=fdatasync && rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-		echo " I/O Speed  :$io" | tee -a $log
+	writemb=$(freedisk)
 
-		io=$( ( dd if=/dev/zero of=test bs=64k count=16k conv=fdatasync oflag=direct && rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-		echo " I/O Direct :$io" | tee -a $log
+	# CPU Speed test
+	echo " CPU Speed:" | tee -a $log
+	io=$( ( dd bs=512K count=$writemb if=/dev/zero of=test; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	echo "   md5sum -$io" | tee -a $log
+	echo "" | tee -a $log
+
+	# Disk test
+	echo " Disk Speed:" | tee -a $log
+	if [[ $writemb != "1" ]]; then
+		io=$( ( dd bs=512K count=$writemb if=/dev/zero of=test; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+		echo "   I/O Speed  -$io" | tee -a $log
+
+		io=$( ( dd bs=512K count=$writemb if=/dev/zero of=test oflag=dsync; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+		echo "   I/O Direct -$io" | tee -a $log
 	else
-		echo " Not enough space to test."
+		echo "   Not enough space to test." | tee -a $log
 	fi
+	echo "" | tee -a $log
+
+	# RAM Speed test
+	# set ram allocation for mount
+	tram_mb="$( free -m | grep Mem | awk 'NR=1 {print $2}' )"
+	if [[ tram_mb -gt 1900 ]]; then
+		sbram=1024
+	else
+		sbram=$(( tram_mb / 2 ))M
+	fi
+	[[ -d $benchram ]] || mkdir $benchram
+	mount -t tmpfs -o size=$sbram tmpfs $benchram/
+	echo " RAM Speed:" | tee -a $log
+	iow1=$( ( dd if=/dev/zero of=$benchram/zero bs=512k count=512 ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior1=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=512; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	iow2=$( ( dd if=/dev/zero of=$benchram/zero bs=512k count=512 ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior2=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=512; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	iow3=$( ( dd if=/dev/zero of=$benchram/zero bs=512k count=512 ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior3=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=512; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	echo "   Avg. write - $(averageio "$iow1" "$iow2" "$iow3") MB/s" | tee -a $log
+	echo "   Avg. read  - $(averageio "$ior1" "$ior2" "$ior3") MB/s" | tee -a $log
+	rm $benchram/zero
+	umount $benchram
+	rm -rf $benchram
 	echo "" | tee -a $log
 }
 
@@ -363,10 +423,9 @@ startedon() {
 }
 
 finishedon() {
-	benchstop=$(date +"%d-%b-%Y %H:%M:%S")
 	end_seconds=$(date +%s)
 	echo " Benchmark finished in $((end_seconds-start_seconds)) seconds" | tee -a $log
-	echo " Benchmark results saved on $log"
+	echo "   results saved on $log"
 	echo "" | tee -a $log
 }
 
