@@ -344,6 +344,11 @@ averageio() {
 	printf "%s" "$ioavg"
 }
 
+cpubench() {
+	io=$( ( dd if=/dev/zero bs=512K count=$2 | $1; rm -f test ) 2>&1 | grep 'copied' | awk -F, '{io=$NF} END { print io}' )
+	printf "%s" "$io"
+}
+
 iotest () {
 	echo "" | tee -a $log
 	echostyle "## IO Test"
@@ -351,15 +356,16 @@ iotest () {
 
 	# start testing
 	writemb=$(freedisk)
+	writemb_size="$(( writemb / 2 ))MB"
 
 	# CPU Speed test
 	echo " CPU Speed:" | tee -a $log
-	io=$( ( dd bs=512K count=$writemb if=/dev/zero of=test; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	echo "   md5sum -$io" | tee -a $log
+	echo "   md5sum $writemb_size -$( cpubench md5sum $writemb)" | tee -a $log
+	echo "   bzip2 $(( ${writemb_size%MB} / 2 ))MB -$( cpubench bzip2 $(( writemb / 2 )))" | tee -a $log
 	echo "" | tee -a $log
 
 	# Disk test
-	echo " Disk Speed:" | tee -a $log
+	echo " Disk Speed ($writemb_size):" | tee -a $log
 	if [[ $writemb != "1" ]]; then
 		io=$( ( dd bs=512K count=$writemb if=/dev/zero of=test; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
 		echo "   I/O Speed  -$io" | tee -a $log
@@ -375,19 +381,21 @@ iotest () {
 	# set ram allocation for mount
 	tram_mb="$( free -m | grep Mem | awk 'NR=1 {print $2}' )"
 	if [[ tram_mb -gt 1900 ]]; then
-		sbram=1024
+		sbram=1024M
+		sbcount=2048
 	else
 		sbram=$(( tram_mb / 2 ))M
+		sbcount=$tram_mb
 	fi
 	[[ -d $benchram ]] || mkdir $benchram
 	mount -t tmpfs -o size=$sbram tmpfs $benchram/
-	echo " RAM Speed:" | tee -a $log
-	iow1=$( ( dd if=/dev/zero of=$benchram/zero bs=512k count=512 ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	ior1=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=512; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	iow2=$( ( dd if=/dev/zero of=$benchram/zero bs=512k count=512 ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	ior2=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=512; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	iow3=$( ( dd if=/dev/zero of=$benchram/zero bs=512k count=512 ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	ior3=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=512; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	printf " RAM Speed (%sB):\n" "$sbram" | tee -a $log
+	iow1=$( ( dd if=/dev/zero of=$benchram/zero bs=512K count=$sbcount ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior1=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	iow2=$( ( dd if=/dev/zero of=$benchram/zero bs=512K count=$sbcount ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior2=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	iow3=$( ( dd if=/dev/zero of=$benchram/zero bs=512K count=$sbcount ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior3=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
 	echo "   Avg. write - $(averageio "$iow1" "$iow2" "$iow3") MB/s" | tee -a $log
 	echo "   Avg. read  - $(averageio "$ior1" "$ior2" "$ior3") MB/s" | tee -a $log
 	rm $benchram/zero
