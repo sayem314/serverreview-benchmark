@@ -253,7 +253,7 @@ cdnspeedtest () {
 	D_ID=$( grep "confirm=" < $TMP_FILE | awk -F "confirm=" '{ print $NF }' | awk -F "&amp" '{ print $1 }' )
 	cdl=$( curl -m 5 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o /dev/null \
 		-s "https://$DRIVE/uc?export=download&confirm=$D_ID&id=$FILE_ID" )
-	printf "%s" "$(human_readable $cdl)/s (ping $( ping -c1 $DRIVE | grep 'rtt' | cut -d"/" -f5 )ms)\n" | tee -a $log
+	printf "%s\n" "$(human_readable $cdl)/s (ping $( ping -c1 $DRIVE | grep 'rtt' | cut -d"/" -f5 )ms)" | tee -a $log
 	echo "" | tee -a $log
 }
 
