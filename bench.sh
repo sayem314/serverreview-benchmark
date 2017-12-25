@@ -199,11 +199,11 @@ echostyle(){
 }
 
 human_readable() {
-	if [[ $1 -lt 1024 ]]; then
+	bytes=${1%.*}
+	if [[ $bytes -lt 1024 ]]; then
 		printf "%4i       B\n"  $1
 	else
 		postfixes=(KiB MiB GiB TiB EiB PiB YiB ZiB)
-		bytes=$1
 		count=0
 		while [[ $bytes -ge 1048576 ]]; do
 			bytes=$((bytes / 1024))
@@ -220,9 +220,8 @@ speed() {
 	ping_link=$( echo ${2#*//} | cut -d"/" -f1 )
 	ping_ms=$( ping -c1 $ping_link | grep 'rtt' | cut -d"/" -f5 )ms
 
-	curldownload=$( curl -m 5 -w '%{speed_download}\n' -o /dev/null -s "$2" )
-	bytestohuman=$( human_readable ${curldownload%.*} )
-	printf "$bytestohuman/s (ping $ping_ms)\n" | tee -a $log
+	cdl=$( curl -m 5 -w '%{speed_download}\n' -o /dev/null -s "$2" )
+	printf "$(human_readable $cdl)/s (ping $ping_ms)\n" | tee -a $log
 }
 
 # 3 location (300MB)
@@ -244,8 +243,7 @@ cdnspeedtest () {
 	D_ID=$( grep "confirm=" < $TMP_FILE | awk -F "confirm=" '{ print $NF }' | awk -F "&amp" '{ print $1 }' )
 	curldownload=$( curl -m 5 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o /dev/null \
 		-s "https://$DRIVE/uc?export=download&confirm=$D_ID&id=$FILE_ID" )
-	bytestohuman=$( human_readable $(echo "$curldownload" | cut -f1 -d".") )
-	printf "$bytestohuman/s (ping $( ping -c1 $DRIVE | grep 'rtt' | cut -d"/" -f5 )ms)\n" | tee -a $log
+	printf "$(human_readable $cdl)/s (ping $( ping -c1 $DRIVE | grep 'rtt' | cut -d"/" -f5 )ms)\n" | tee -a $log
 	echo "" | tee -a $log
 }
 
@@ -259,7 +257,7 @@ northamerciaspeedtest () {
 	speed "SoftLayer, Dallas, USA     :" "http://speedtest.dal01.softlayer.com/downloads/test100.zip"
 	speed "Vultr, New Jersey, USA     :" "http://nj-us-ping.vultr.com/vultr.com.100MB.bin"
 	speed "Vultr, Seattle, USA        :" "http://wa-us-ping.vultr.com/vultr.com.100MB.bin"
-	speed "Vultr, Dallas, USA         :" "http://tx-us-ping.vultr.com/vultr.com.100MB.bin')"
+	speed "Vultr, Dallas, USA         :" "http://tx-us-ping.vultr.com/vultr.com.100MB.bin"
 	speed "Vultr, Los Angeles, USA    :" "https://lax-ca-us-ping.vultr.com/vultr.com.100MB.bin"
 	speed "Ramnode, New York, USA     :" "http://lg.nyc.ramnode.com/static/100MB.test"
 	speed "Ramnode, Atlanta, USA      :" "http://lg.atl.ramnode.com/static/100MB.test"
@@ -357,7 +355,7 @@ speedtestresults () {
 }
 
 startedon() {
-	echo "\$ ./$ARG" >> $log
+	echo "\$ $ARG" >> $log
 	echo "" | tee -a $log
 	benchstart=$(date +"%d-%b-%Y %H:%M:%S")
 	start_seconds=$(date +%s)
