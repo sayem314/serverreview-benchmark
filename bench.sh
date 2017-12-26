@@ -345,8 +345,12 @@ averageio() {
 }
 
 cpubench() {
-	io=$( ( dd if=/dev/zero bs=512K count=$2 | $1; rm -f test ) 2>&1 | grep 'copied' | awk -F, '{io=$NF} END { print io}' )
-	printf "%s" "$io"
+	if hash $1 2>/dev/null; then
+		io=$( dd if=/dev/zero bs=512K count=$2 | $1 2>&1 | grep 'copied' | awk -F, '{io=$NF} END { print io}' )
+		printf "%s" "$io"
+	else
+		printf " %s not found on system."
+	fi
 }
 
 iotest () {
@@ -404,22 +408,18 @@ iotest () {
 	echo "" | tee -a $log
 }
 
-installspeedtest () {
-	# Installing speed test
-	curl -s https://raw.github.com/sivel/speedtest-cli/master/speedtest_cli.py -o speedtest_cli.py
-	chmod a+rx speedtest_cli.py
-	mv speedtest_cli.py /usr/local/bin/speedtest-cli
-	chown root:root /usr/local/bin/speedtest-cli
-	echo " Installing speedtest-cli script has been finished"
-	echo " speedtest-cli works with Python 2.4-3.4"
-	echo " Run 'bash bench -speed' to run speedtest" | sed $'s/bash bench -speed/\e[1m&\e[0m/'
-	echo ""
-}
-
 speedtestresults () {
 	#Testing Speedtest
-	speedtest-cli --share
-	echo ""
+	if hash python 2>/dev/null; then
+		curl -Lso speedtest-cli https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py
+		python speedtest-cli --share | tee -a $log
+		rm -f speedtest-cli
+		echo ""
+	else
+		echo " Python is not installed."
+		echo " First install python, then re-run the script."
+		echo ""
+	fi
 }
 
 startedon() {
@@ -471,8 +471,6 @@ case $1 in
 	'-a'|'-all'|'-bench'|'--a'|'--all'|'--bench' )
 		startedon; systeminfo; cdnspeedtest; northamerciaspeedtest;
 		europespeedtest; pacificpeedtest; asiaspeedtest; iotest; finishedon;;
-	'-ispeed'|'-installspeed'|'-installspeedtest'|'--ispeed'|'--installspeed'|'--installspeedtest' )
-		installspeedtest;;
 	'-speed'|'-speedtest'|'-speedcheck'|'--speed'|'--speedtest'|'--speedcheck' )
 		speedtestresults;;
 	'-help'|'--help' )
