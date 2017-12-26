@@ -2,7 +2,7 @@
 
 ##### Download
 
-`curl -Ls raw.githubusercontent.com/sayem314/serverreview-benchmark/v3-dev/bench.sh -o bench.sh; chmod +x bench.sh`
+`curl -Lso bench.sh raw.githubusercontent.com/sayem314/serverreview-benchmark/v3-dev/bench.sh; chmod +x bench.sh`
 
 ##### Usage
 
@@ -12,25 +12,27 @@ Example: `./bench.sh -b share`
 
 ##### Arguments
 
-`./bench.sh -info` # System Information
+`-info` # System Information
 
-`/bench.sh -io` # I/O Test
+`-io` # I/O Test
 
-`./bench.sh -cdn` # CDN Download (200MB)
+`-cdn` # CDN Download (200MB)
 
-`./bench.sh -northamerica` # North America Download (800MB)
+`-northamerica` # North America Download (800MB)
 
-`./bench.sh -europe` # Europe Download (900MB)
+`-europe` # Europe Download (900MB)
 
-`./bench.sh -asia` # Asia Download (400MB)
+`-asia` # Asia Download (400MB)
 
-`./bench.sh -b` # System Info + CDN Download + I/O Test
+`-b` # System Info + CDN Download + I/O Test
 
-`./bench.sh -a` # All In One Command
+`-a` # All In One Command
 
-`./bench.sh -help` # Show help
+`-speed` # Test from speedtest.net using speedtest cli
 
-`./bench.sh -about` # Show about
+`-help` # Show help
+
+`-about` # Show about
 
 ##### Parameters
 
