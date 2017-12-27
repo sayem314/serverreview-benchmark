@@ -341,9 +341,13 @@ averageio() {
 cpubench() {
 	if hash $1 2>/dev/null; then
 		io=$( ( dd if=/dev/zero bs=512K count=$2 | $1 ) 2>&1 | grep 'copied' | awk -F, '{io=$NF} END { print io}' )
-		printf "%s" "$io"
+		if [[ $io != *"."* ]]; then
+			printf "  %4i %s" "${io% *}" "${io##* }"
+		else
+			printf "%4i.%s" "${io%.*}" "${io#*.}"
+		fi
 	else
-		printf " %s not found on system."
+		printf " %s not found on system." "$1"
 	fi
 }
 
@@ -354,13 +358,22 @@ iotest () {
 
 	# start testing
 	writemb=$(freedisk)
-	writemb_size="$(( writemb / 2 ))MB"
+	if [[ $writemb -gt 512 ]]; then
+		writemb_size="$(( writemb / 2 / 2 ))MB"
+		writemb_cpu="$(( writemb / 2 ))"
+	else
+		writemb_size="$writemb"MB
+		writemb_cpu=$writemb
+	fi
 
 	# CPU Speed test
-	echo " CPU Speed:" | tee -a $log
-	echo "   md5sum $writemb_size -$( cpubench md5sum $writemb)" | tee -a $log
-	echo "   bzip2 $(( ${writemb_size%MB} / 2 ))MB -$( cpubench bzip2 $(( writemb / 2 )))" | tee -a $log
-	echo "" | tee -a $log
+	printf " CPU Speed:\n" | tee -a $log
+	printf "    bzip2 %s -" "$writemb_size" | tee -a $log
+	printf "%s\n" "$( cpubench bzip2 $writemb_cpu )" | tee -a $log 
+	printf "   sha256 %s -" "$writemb_size" | tee -a $log
+	printf "%s\n" "$( cpubench sha256sum $writemb_cpu )" | tee -a $log
+	printf "   md5sum %s -" "$writemb_size" | tee -a $log
+	printf "%s\n\n" "$( cpubench md5sum $writemb_cpu )" | tee -a $log
 
 	# Disk test
 	echo " Disk Speed ($writemb_size):" | tee -a $log
