@@ -204,18 +204,12 @@ echostyle(){
 	fi
 }
 
-human_readable() {
+FormatBytes() {
 	bytes=${1%.*}
 	if [[ $bytes -lt 1024 ]]; then
-		printf "%4i       B\n"  $1
+		printf "%5i       B\n"  $bytes
 	else
-		postfixes=(KiB MiB GiB TiB EiB PiB YiB ZiB)
-		count=0
-		while [[ $bytes -ge 1048576 ]]; do
-			bytes=$((bytes / 1024))
-			count=$((count + 1))
-		done
-		printf "%4i.%03i %s\n" $((bytes / 1024)) $(((bytes % 1024) * 1000 / 1024)) ${postfixes[$count]}
+		printf "%4i MiB/s | %4i Mbps" "$(( bytes / 1024 / 1024 ))" "$(( bytes / 1024 / 1024 * 8 ))"
 	fi
 }
 
@@ -230,8 +224,8 @@ speed() {
 	ping_ms=$( ping -c1 $ping_link | grep 'rtt' | cut -d"/" -f5 )ms
 
 	# get download speed and print
-	cdl=$( curl -m 5 -w '%{speed_download}\n' -o /dev/null -s "$2" )
-	printf "%s\n" "$(human_readable $cdl)/s (ping $ping_ms)" | tee -a $log
+	C_DL=$( curl -m 5 -w '%{speed_download}\n' -o /dev/null -s "$2" )
+	printf "%s\n" "$(FormatBytes $C_DL) | ping $ping_ms" | tee -a $log
 }
 
 # 3 location (300MB)
@@ -251,9 +245,9 @@ cdnspeedtest () {
 	printf " Gdrive   :"  | tee -a $log
 	curl -c $TMP_COOKIES -o $TMP_FILE -s "https://$DRIVE/uc?id=$FILE_ID&export=download"
 	D_ID=$( grep "confirm=" < $TMP_FILE | awk -F "confirm=" '{ print $NF }' | awk -F "&amp" '{ print $1 }' )
-	cdl=$( curl -m 5 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o /dev/null \
+	C_DL=$( curl -m 5 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o /dev/null \
 		-s "https://$DRIVE/uc?export=download&confirm=$D_ID&id=$FILE_ID" )
-	printf "%s\n" "$(human_readable $cdl)/s (ping $( ping -c1 $DRIVE | grep 'rtt' | cut -d"/" -f5 )ms)" | tee -a $log
+	printf "%s\n" "$(FormatBytes $C_DL) | ping $( ping -c1 $DRIVE | grep 'rtt' | cut -d"/" -f5 )ms" | tee -a $log
 	echo "" | tee -a $log
 }
 
@@ -346,7 +340,7 @@ averageio() {
 
 cpubench() {
 	if hash $1 2>/dev/null; then
-		io=$( dd if=/dev/zero bs=512K count=$2 | $1 2>&1 | grep 'copied' | awk -F, '{io=$NF} END { print io}' )
+		io=$( ( dd if=/dev/zero bs=512K count=$2 | $1 ) 2>&1 | grep 'copied' | awk -F, '{io=$NF} END { print io}' )
 		printf "%s" "$io"
 	else
 		printf " %s not found on system."
