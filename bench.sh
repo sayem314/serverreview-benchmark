@@ -206,10 +206,19 @@ echostyle(){
 
 FormatBytes() {
 	bytes=${1%.*}
-	if [[ $bytes -lt 1024 ]]; then
-		printf "%5i       B\n"  $bytes
+	if [[ $bytes -lt 1000 ]]; then
+		printf "%8i B/s"  $bytes
+	elif [[ $bytes -lt 1000000 ]]; then
+		local KiBs=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 } END { if (NR == 0) { print "error" } }' )
+		printf "%7s KiB/s"  $KiBs
 	else
-		printf "%4i MiB/s | %4i Mbps" "$(( bytes / 1024 / 1024 ))" "$(( bytes / 1024 / 1024 * 8 ))"
+		# awk way for accuracy
+		local MiBs=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 / 1024 } END { if (NR == 0) { print "error" } }' )
+		local Mbps=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 / 1024 * 8 } END { if (NR == 0) { print "error" } }' )
+		printf "%7s MiB/s | %7s Mbps" "$MiBs" "$Mbps"
+
+		# bash way
+		# printf "%4s MiB/s | %4s Mbps""$(( bytes / 1024 / 1024 ))" "$(( bytes / 1024 / 1024 * 8 ))"
 	fi
 }
 
