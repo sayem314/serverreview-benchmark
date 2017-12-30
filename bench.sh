@@ -206,19 +206,32 @@ echostyle(){
 
 FormatBytes() {
 	bytes=${1%.*}
+	local Mbps=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 / 1024 * 8 } END { if (NR == 0) { print "error" } }' )
 	if [[ $bytes -lt 1000 ]]; then
 		printf "%8i B/s"  $bytes
 	elif [[ $bytes -lt 1000000 ]]; then
 		local KiBs=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 } END { if (NR == 0) { print "error" } }' )
-		printf "%7s KiB/s"  $KiBs
+		printf "%7s KiB/s | %7s Mbps" "$KiBs" "$Mbps"
 	else
 		# awk way for accuracy
 		local MiBs=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 / 1024 } END { if (NR == 0) { print "error" } }' )
-		local Mbps=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 / 1024 * 8 } END { if (NR == 0) { print "error" } }' )
 		printf "%7s MiB/s | %7s Mbps" "$MiBs" "$Mbps"
 
 		# bash way
 		# printf "%4s MiB/s | %4s Mbps""$(( bytes / 1024 / 1024 ))" "$(( bytes / 1024 / 1024 * 8 ))"
+	fi
+}
+
+pingtest() {
+	# ping one time
+	ping_link=$( echo ${1#*//} | cut -d"/" -f1 )
+	ping_ms=$( ping -w1 -c1 $ping_link | grep 'rtt' | cut -d"/" -f5 )
+
+	# get download speed and print
+	if [[ $ping_ms == "" ]]; then
+		printf " | ping error!"
+	else
+		printf " | ping %3i.%sms" "${ping_ms%.*}" "${ping_ms#*.}"
 	fi
 }
 
@@ -228,13 +241,9 @@ speed() {
 	# print name
 	printf "%s" " $1" | tee -a $log
 
-	# ping one time
-	ping_link=$( echo ${2#*//} | cut -d"/" -f1 )
-	ping_ms=$( ping -c1 $ping_link | grep 'rtt' | cut -d"/" -f5 )ms
-
 	# get download speed and print
-	C_DL=$( curl -m 5 -w '%{speed_download}\n' -o /dev/null -s "$2" )
-	printf "%s\n" "$(FormatBytes $C_DL) | ping $ping_ms" | tee -a $log
+	C_DL=$( curl -m 4 -w '%{speed_download}\n' -o /dev/null -s "$2" )
+	printf "%s\n" "$(FormatBytes $C_DL) $(pingtest $2)" | tee -a $log
 }
 
 # 3 location (300MB)
@@ -254,9 +263,9 @@ cdnspeedtest () {
 	printf " Gdrive   :"  | tee -a $log
 	curl -c $TMP_COOKIES -o $TMP_FILE -s "https://$DRIVE/uc?id=$FILE_ID&export=download"
 	D_ID=$( grep "confirm=" < $TMP_FILE | awk -F "confirm=" '{ print $NF }' | awk -F "&amp" '{ print $1 }' )
-	C_DL=$( curl -m 5 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o /dev/null \
+	C_DL=$( curl -m 4 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o /dev/null \
 		-s "https://$DRIVE/uc?export=download&confirm=$D_ID&id=$FILE_ID" )
-	printf "%s\n" "$(FormatBytes $C_DL) | ping $( ping -c1 $DRIVE | grep 'rtt' | cut -d"/" -f5 )ms" | tee -a $log
+	printf "%s\n" "$(FormatBytes $C_DL) $(pingtest $DRIVE)" | tee -a $log
 	echo "" | tee -a $log
 }
 
@@ -499,7 +508,7 @@ esac
 
 case $2 in
 	'-share'|'--share'|'share' )
-		sharetest haste;;
+		sharetest ubuntu;;
 	'-haste'|'--haste'|'haste' )
 		sharetest haste;;
 	'-ubuntu'|'--ubuntu'|'ubuntu' )
