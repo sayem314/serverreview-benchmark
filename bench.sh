@@ -466,6 +466,8 @@ sharetest() {
 	case $1 in
 	'haste' )
 		share_link=$( curl -X POST -s -d "$(cat $log)" https://hastebin.com/documents | awk -F '"' '{print "https://hastebin.com/"$4}' );;
+	'clbin' )
+		share_link=$( cat $log | curl -F 'clbin=<-' https://clbin.com );;
 	*)
 		share_link=$( curl -v --data-urlencode "content@$log" -d "poster=bench.log" -d "syntax=text" "https://paste.ubuntu.com" 2>&1 | \
 			grep "Location" | awk '{print $3}' );;
@@ -513,6 +515,8 @@ case $2 in
 		sharetest haste;;
 	'-ubuntu'|'--ubuntu'|'ubuntu' )
 		sharetest ubuntu;;
+	'-clbin'|'--clbin'|'clbin' )
+		sharetest clbin;;
 esac
 
 # ring a bell
