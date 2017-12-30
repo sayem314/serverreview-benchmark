@@ -6,7 +6,7 @@
 
 ##### Usage
 
-`./bench.sh` `ARG` `PRM(Optional)`
+`./bench.sh` `Arguments` `Parameters (Optional)`
 
 Example: `./bench.sh -b share`
 
@@ -36,11 +36,19 @@ Example: `./bench.sh -b share`
 
 ##### Parameters
 
-`share` # upload results (default to hastebin)
+`share`
 
-`ubuntu` # upload results to ubuntu paste
+Ex: `./bench.sh -cdn share haste`
 
-`clbin` # upload results to clbin
+Available option:
+
+    `ubuntu` # upload results to ubuntu paste (default)
+
+    `haste` # upload results to hastebin
+
+    `clbin` # upload results to clbin
+
+    `ptpb` # upload results to ptpb
 
 ##### _Credits_
 
