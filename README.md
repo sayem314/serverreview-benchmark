@@ -40,6 +40,7 @@ Example: `./bench.sh -b share`
 
 `ubuntu` # upload results to ubuntu paste
 
+`clbin` # upload results to clbin
 
 ##### _Credits_
 
