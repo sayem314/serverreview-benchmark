@@ -45,6 +45,9 @@ howto () {
 	echo ""
 }
 
+CMD="$1"
+PRM1="$2"
+PRM2="$3"
 log="$HOME/bench.log"
 ARG="$BASH_SOURCE $@"
 benchram="/mnt/tmpbenchram"
@@ -464,21 +467,25 @@ finishedon() {
 
 sharetest() {
 	case $1 in
+	'ubuntu')
+		share_link=$( curl -v --data-urlencode "content@$log" -d "poster=bench.log" -d "syntax=text" "https://paste.ubuntu.com" 2>&1 | \
+			grep "Location" | awk '{print $3}' );;
 	'haste' )
 		share_link=$( curl -X POST -s -d "$(cat $log)" https://hastebin.com/documents | awk -F '"' '{print "https://hastebin.com/"$4}' );;
 	'clbin' )
 		share_link=$( cat $log | curl -sF 'clbin=<-' https://clbin.com );;
-	*)
-		share_link=$( curl -v --data-urlencode "content@$log" -d "poster=bench.log" -d "syntax=text" "https://paste.ubuntu.com" 2>&1 | \
-			grep "Location" | awk '{print $3}' );;
+	'ptpb' )
+		share_link=$( cat $log | curl -sF c=@- https://ptpb.pw/?u=1 );;
 	esac
+
+	# print result info
 	echo " Share result:"
 	echo " $share_link"
 	echo ""
 
 }
 
-case $1 in
+case $CMD in
 	'-info'|'-information'|'--info'|'--information' )
 		systeminfo;;
 	'-io'|'-drivespeed'|'--io'|'--drivespeed' )
@@ -508,15 +515,14 @@ case $1 in
 		howto;;
 esac
 
-case $2 in
+case $PRM1 in
 	'-share'|'--share'|'share' )
-		sharetest ubuntu;;
-	'-haste'|'--haste'|'haste' )
-		sharetest haste;;
-	'-ubuntu'|'--ubuntu'|'ubuntu' )
-		sharetest ubuntu;;
-	'-clbin'|'--clbin'|'clbin' )
-		sharetest clbin;;
+		if [[ $PRM2 == "" ]]; then
+			sharetest ubuntu
+		else
+			sharetest $PRM2
+		fi
+		;;
 esac
 
 # ring a bell
