@@ -2,7 +2,7 @@
 
 ##### Download
 
-`curl -LsO raw.githubusercontent.com/sayem314/serverreview-benchmark/v3-dev/bench.sh; chmod +x bench.sh`
+`curl -LsO git.io/bench.sh; chmod +x bench.sh`
 
 ##### Usage
 
