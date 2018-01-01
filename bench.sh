@@ -9,7 +9,7 @@ about () {
 	echo "  ========================================================= "
 	echo "  \             Serverreview Benchmark Script             / "
 	echo "  \       Basic system info, I/O test and speedtest       / "
-	echo "  \               V 3.0.0  (xx xxx xxxx)                  / "
+	echo "  \               V 3.0.0  (01 Jan 2018)                  / "
 	echo "  \             Created by Sayem Chowdhury                / "
 	echo "  ========================================================= "
 	echo ""
@@ -34,8 +34,12 @@ prms () {
 	echo "    $(tput setaf 3)-about$(tput sgr0)        - Check about this script"
 	echo ""
 	echo "  Parameters"
-	echo "    $(tput setaf 3)share$(tput sgr0)         - upload results (default to hastebin)"
-	echo "    $(tput setaf 3)ubuntu$(tput sgr0)        - upload results to ubuntu paste"
+	echo "    $(tput setaf 3)share$(tput sgr0)         - upload results (default to ubuntu paste)"
+	echo "    Available option for share:"
+	echo "      ubuntu # upload results to ubuntu paste (default)"
+	echo "      haste # upload results to hastebin"
+	echo "      clbin # upload results to clbin"
+	echo "      ptpb # upload results to ptpb"
 }
 
 howto () {
@@ -507,9 +511,9 @@ case $CMD in
 		europespeedtest; pacificpeedtest; asiaspeedtest; iotest; finishedon;;
 	'-speed'|'-speedtest'|'-speedcheck'|'--speed'|'--speedtest'|'--speedcheck' )
 		speedtestresults;;
-	'-help'|'--help' )
+	'-help'|'--help'|'help' )
 		prms;;
-	'-about'|'--about' )
+	'-about'|'--about'|'about' )
 		about;;
 	*)
 		howto;;
