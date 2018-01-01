@@ -2,14 +2,14 @@
 # serverreview-benchmark by @sayem314
 # Github: https://github.com/sayem314/serverreview-benchmark
 
-# shellcheck disable=SC1117,SC2086,SC2003,SC1001,SC2116,SC2046
+# shellcheck disable=SC1117,SC2086,SC2003,SC1001,SC2116,SC2046,2128,2124
 
 about () {
 	echo ""
 	echo "  ========================================================= "
 	echo "  \             Serverreview Benchmark Script             / "
 	echo "  \       Basic system info, I/O test and speedtest       / "
-	echo "  \               V 2.3.2  (21 Dec 2017)                  / "
+	echo "  \               V 3.0.0  (01 Jan 2018)                  / "
 	echo "  \             Created by Sayem Chowdhury                / "
 	echo "  ========================================================= "
 	echo ""
@@ -20,45 +20,68 @@ about () {
 }
 
 prms () {
-	echo "  $(tput setaf 3)-info$(tput sgr0)          - Check basic system information"
-	echo "  $(tput setaf 3)-io$(tput sgr0)            - Run I/O test with or w/ cache"
-	echo "  $(tput setaf 3)-cdn$(tput sgr0)           - Check download speed from CDN"
-	echo "  $(tput setaf 3)-northamercia$(tput sgr0)  - Download speed from North America"
-	echo "  $(tput setaf 3)-europe$(tput sgr0)        - Download speed from Europe"
-	echo "  $(tput setaf 3)-asia$(tput sgr0)          - Download speed from asia"
-	echo "  $(tput setaf 3)-a$(tput sgr0)             - Test and check all above things at once"
-	echo "  $(tput setaf 3)-b$(tput sgr0)             - System info, CDN speedtest and I/O test"
-	echo "  $(tput setaf 3)-ispeed$(tput sgr0)        - Install speedtest-cli (python 2.4-3.4 required)"
-	echo "  $(tput setaf 3)-speed$(tput sgr0)         - Check internet speed using speedtest-cli"
-	echo "  $(tput setaf 3)-about$(tput sgr0)         - Check about this script"
+	echo "  Arguments:"
+	echo "    $(tput setaf 3)-info$(tput sgr0)         - Check basic system information"
+	echo "    $(tput setaf 3)-io$(tput sgr0)           - Run I/O test with or w/ cache"
+	echo "    $(tput setaf 3)-cdn$(tput sgr0)          - Check download speed from CDN"
+	echo "    $(tput setaf 3)-northamercia$(tput sgr0) - Download speed from North America"
+	echo "    $(tput setaf 3)-europe$(tput sgr0)       - Download speed from Europe"
+	echo "    $(tput setaf 3)-asia$(tput sgr0)         - Download speed from asia"
+	echo "    $(tput setaf 3)-a$(tput sgr0)            - Test and check all above things at once"
+	echo "    $(tput setaf 3)-b$(tput sgr0)            - System info, CDN speedtest and I/O test"
+	echo "    $(tput setaf 3)-ispeed$(tput sgr0)       - Install speedtest-cli (python 2.4-3.4 required)"
+	echo "    $(tput setaf 3)-speed$(tput sgr0)        - Check internet speed using speedtest-cli"
+	echo "    $(tput setaf 3)-about$(tput sgr0)        - Check about this script"
 	echo ""
+	echo "  Parameters"
+	echo "    $(tput setaf 3)share$(tput sgr0)         - upload results (default to ubuntu paste)"
+	echo "    Available option for share:"
+	echo "      ubuntu # upload results to ubuntu paste (default)"
+	echo "      haste # upload results to hastebin"
+	echo "      clbin # upload results to clbin"
+	echo "      ptpb # upload results to ptpb"
 }
 
 howto () {
 	echo ""
-	echo "  Wrong parameters. Use $(tput setaf 3)bash bench -help$(tput sgr0) to see parameters"
-	echo "  ex: $(tput setaf 3)bash bench -info$(tput sgr0) (without quotes) for system information"
+	echo "  Wrong parameters. Use $(tput setaf 3)bash $BASH_SOURCE -help$(tput sgr0) to see parameters"
+	echo "  ex: $(tput setaf 3)bash $BASH_SOURCE -info$(tput sgr0) (without quotes) for system information"
 	echo ""
 }
 
+CMD="$1"
+PRM1="$2"
+PRM2="$3"
+log="$HOME/bench.log"
+ARG="$BASH_SOURCE $@"
+benchram="/mnt/tmpbenchram"
+true > $log
+
+cancel () {
+	echo ""
+	rm -f test
+	echo " Abort"
+	if [[ -d $benchram ]]; then
+		rm $benchram/zero
+		umount $benchram
+		rm -rf $benchram
+	fi
+	exit
+}
+
+trap cancel SIGINT
+
 systeminfo () {
-	cpumodel=$( awk -F: '/model name/ {name=$2} END {print name}' /proc/cpuinfo )
 	cpubits=$( uname -m )
-	cores=$( awk -F: '/model name/ {core++} END {print core}' /proc/cpuinfo )
-	corescache=$( awk -F: '/cache size/ {cache=$2} END {print cache}' /proc/cpuinfo )
-	freq=$( awk -F: ' /cpu MHz/ {freq=$2} END {print freq}' /proc/cpuinfo )
-	tram=$( free -h | grep Mem | awk 'NR=1 {print $2}' )B
-	fram=$( free -h | grep Mem | awk 'NR=1 {print $4}' )B
 	hdd=$( df -h --total | grep 'total' | awk '{print $2}' )B
 	hddfree=$( df -h --total | grep 'total' | awk '{print $5}' )
-	tswap=$( free -h | grep Swap | awk 'NR=1 {print $2}' )B
-	tswap0=$( grep SwapTotal < /proc/meminfo | awk 'NR=1 {print $2$3}' )
-	fswap=$( free -h | grep Swap | awk 'NR=1 {print $4}' )B
+	fswap=$( free -m | grep Swap | awk 'NR=1 {print $4}' )MiB
 
 	# Systeminfo
-	echo ""
+	echo "" | tee -a $log
 	echo " $(tput setaf 6)## System Information$(tput sgr0)"
-	echo ""
+	echo " ## System Information" >> $log
+	echo "" | tee -a $log
 
 	# OS Information (Name)
 	if [ "$cpubits" == 'x86_64' ]; then
@@ -69,7 +92,7 @@ systeminfo () {
 
 	if hash lsb_release 2>/dev/null; then
 		soalt=$(lsb_release -d)
-		echo -e " OS Name:    "${soalt:13} $bits
+		echo -e " OS Name     : "${soalt:13} $bits | tee -a $log
 	else
 		so=$(awk 'NF' /etc/issue)
 		pos=$(expr index "$so" 123456789)
@@ -94,8 +117,8 @@ systeminfo () {
 			pos=$((pos-2))
 			so=${so/\/}
 		fi
-		echo -e " OS Name:    "${so:0:($pos+2)}$extra$bits | tr -d '\n'
-		echo ""
+		echo -e " OS Name     : "${so:0:($pos+2)}$extra$bits | tr -d '\n' | tee -a $log
+		echo "" | tee -a $log
 	fi
 	sleep 0.1
 
@@ -121,39 +144,47 @@ systeminfo () {
 	fi
 
 	#Kernel
-	echo " Kernel:     $virtual / $(uname -r)"
+	echo " Kernel      : $virtual / $(uname -r)" | tee -a $log
 	sleep 0.1
 
 	# Hostname
-	echo " Hostname:   $(hostname)"
+	echo " Hostname    : $(hostname)" | tee -a $log
 	sleep 0.1
 
 	# CPU Model Name
-	echo " CPU Model: $cpumodel"
+	cpumodel=$( awk -F: '/model name/ {name=$2} END {print name}' /proc/cpuinfo )
+	echo " CPU Model   :$cpumodel" | tee -a $log
 	sleep 0.1
 
-	# Cpu Cores
+	# CPU Cores
+	cores=$( awk -F: '/model name/ {core++} END {print core}' /proc/cpuinfo )
+	corescache=$( awk -F: '/cache size/ {cache=$2} END {print cache}' /proc/cpuinfo )
+	freq=$( awk -F: ' /cpu MHz/ {freq=$2} END {print freq}' /proc/cpuinfo )
 	if [[ $cores == "1" ]]; then
-		echo " CPU Cores:  $cores core @ $freq MHz"
+		echo " CPU Cores   : $cores core @ $freq MHz" | tee -a $log
 	else
-		echo " CPU Cores:  $cores cores @ $freq MHz"
+		echo " CPU Cores   : $cores cores @ $freq MHz" | tee -a $log
 	fi
 	sleep 0.1
-	echo " CPU Cache: $corescache"
+	echo " CPU Cache   :$corescache" | tee -a $log
 	sleep 0.1
 
-	# Ram Information
-	echo " Total RAM:  $tram (Free $fram)"
+	# RAM Information
+	tram="$( free -m | grep Mem | awk 'NR=1 {print $2}' ) MiB"
+	fram="$( free -m | grep Mem | awk 'NR=1 {print $4}' ) MiB"
+	echo " Total RAM   : $tram (Free $fram)" | tee -a $log
 	sleep 0.1
 
 	# Swap Information
+	tswap="$( free -m | grep Swap | awk 'NR=1 {print $2}' ) MiB"
+	tswap0=$( grep SwapTotal < /proc/meminfo | awk 'NR=1 {print $2$3}' )
 	if [[ "$tswap0" == "0kB" ]]; then
-		echo " Total SWAP: SWAP not enabled"
+		echo " Total SWAP  : SWAP not enabled" | tee -a $log
 	else
-		echo " Total SWAP: $tswap (Free $fswap)"
+		echo " Total SWAP  : $tswap (Free $fswap)" | tee -a $log
 	fi
 	sleep 0.1
-	echo " Total Space: $hdd ($hddfree used)"
+	echo " Total Space : $hdd ($hddfree used)" | tee -a $log
 	sleep 0.1
 
 	# Uptime
@@ -167,133 +198,298 @@ systeminfo () {
 	else
 		sysuptime=$( echo $((secs/86400))"days - "$(date -d "1970-01-01 + $secs seconds" "+%Hhrs %Mmin %Ssec") )
 	fi
-	echo " Running for: $sysuptime"
-	echo ""
+	echo " Running for : $sysuptime" | tee -a $log
+	echo "" | tee -a $log
 }
 
+echostyle(){
+	if hash tput 2>/dev/null; then
+		echo " $(tput setaf 6)$1$(tput sgr0)"
+		echo " $1" >> $log
+	else
+		echo " $1" | tee -a $log
+	fi
+}
+
+FormatBytes() {
+	bytes=${1%.*}
+	local Mbps=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 / 1024 * 8 } END { if (NR == 0) { print "error" } }' )
+	if [[ $bytes -lt 1000 ]]; then
+		printf "%8i B/s"  $bytes
+	elif [[ $bytes -lt 1000000 ]]; then
+		local KiBs=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 } END { if (NR == 0) { print "error" } }' )
+		printf "%7s KiB/s | %7s Mbps" "$KiBs" "$Mbps"
+	else
+		# awk way for accuracy
+		local MiBs=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 / 1024 } END { if (NR == 0) { print "error" } }' )
+		printf "%7s MiB/s | %7s Mbps" "$MiBs" "$Mbps"
+
+		# bash way
+		# printf "%4s MiB/s | %4s Mbps""$(( bytes / 1024 / 1024 ))" "$(( bytes / 1024 / 1024 * 8 ))"
+	fi
+}
+
+pingtest() {
+	# ping one time
+	ping_link=$( echo ${1#*//} | cut -d"/" -f1 )
+	ping_ms=$( ping -w1 -c1 $ping_link | grep 'rtt' | cut -d"/" -f5 )
+
+	# get download speed and print
+	if [[ $ping_ms == "" ]]; then
+		printf " | ping error!"
+	else
+		printf " | ping %3i.%sms" "${ping_ms%.*}" "${ping_ms#*.}"
+	fi
+}
+
+# main function for speed checking
+# the report speed are average per file
+speed() {
+	# print name
+	printf "%s" " $1" | tee -a $log
+
+	# get download speed and print
+	C_DL=$( curl -m 4 -w '%{speed_download}\n' -o /dev/null -s "$2" )
+	printf "%s\n" "$(FormatBytes $C_DL) $(pingtest $2)" | tee -a $log
+}
+
+# 3 location (300MB)
 cdnspeedtest () {
-	echo ""
-	echo " $(tput setaf 6)## CDN Speedtest$(tput sgr0)"
-	cachefly=$( wget -O /dev/null http://cachefly.cachefly.net/100mb.test 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " CacheFly:  $cachefly"
+	echo "" | tee -a $log
+	echostyle "## CDN Speedtest"
+	echo "" | tee -a $log
+	speed "CacheFly :" "http://cachefly.cachefly.net/100mb.test"
+	speed "CDN.net  :" "http://993660212.r.worldcdn.net/100MB.bin"
 
 	# google drive speed test
 	TMP_COOKIES="/tmp/cookies.txt"
 	TMP_FILE="/tmp/gdrive"
+	DRIVE="drive.google.com"
 	FILE_ID="1EcDdTYwJNBIXx_BL6pzEkjTD_pkCbYni"
-	if wget -q --save-cookies $TMP_COOKIES -O "$TMP_FILE" "https://drive.google.com/uc?id=$FILE_ID&export=download"; then
-		D_ID=$( grep "confirm=" < $TMP_FILE | awk -F "confirm=" '{ print $NF }' | awk -F "&amp" '{ print $1 }' )
-		gdrive=$( wget --load-cookies $TMP_COOKIES -O /dev/null "https://drive.google.com/uc?export=download&confirm=$D_ID&id=$FILE_ID" 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-		echo " Gdrive:  $gdrive"
-	fi
-	echo ""
+
+	printf " Gdrive   :"  | tee -a $log
+	curl -c $TMP_COOKIES -o $TMP_FILE -s "https://$DRIVE/uc?id=$FILE_ID&export=download"
+	D_ID=$( grep "confirm=" < $TMP_FILE | awk -F "confirm=" '{ print $NF }' | awk -F "&amp" '{ print $1 }' )
+	C_DL=$( curl -m 4 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o /dev/null \
+		-s "https://$DRIVE/uc?export=download&confirm=$D_ID&id=$FILE_ID" )
+	printf "%s\n" "$(FormatBytes $C_DL) $(pingtest $DRIVE)" | tee -a $log
+	echo "" | tee -a $log
 }
 
+# 10 location (1GB)
 northamerciaspeedtest () {
-	echo ""
-	echo " $(tput setaf 6)## North America Speedtest$(tput sgr0)"
-	nas1=$( wget -O /dev/null http://speedtest.dal01.softlayer.com/downloads/test100.zip 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " SoftLayer, Dallas, USA: $nas1"
-	
-	nas2=$( wget -O /dev/null http://speedtest.choopa.net/100MBtest.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " ReliableSite, Piscataway, USA: $nas2"
-	
-	nas3=$( wget -O /dev/null http://bhs.proof.ovh.net/files/100Mio.dat 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " OVH, Beauharnois, Canada: $nas3"
-	
-	nas4=$( wget -O /dev/null http://speedtest.wdc01.softlayer.com/downloads/test100.zip 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Softlayer, Washington, USA: $nas4"
-	
-	nas5=$( wget -O /dev/null http://speedtest.sjc01.softlayer.com/downloads/test100.zip 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " SoftLayer, San Jose, USA: $nas5"
-	
-	nas6=$( wget -O /dev/null http://tx-us-ping.vultr.com/vultr.com.100MB.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Vultr, Dallas, USA: $nas6"
-	
-	nas7=$( wget -O /dev/null http://nj-us-ping.vultr.com/vultr.com.100MB.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Vultr, New Jersey, USA: $nas7"
-	
-	nas8=$( wget -O /dev/null http://wa-us-ping.vultr.com/vultr.com.100MB.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Vultr, Seattle, USA: $nas8"
+	echo "" | tee -a $log
+	echostyle "## North America Speedtest"
+	echo "" | tee -a $log
+	speed "Softlayer, Washington, USA :" "http://speedtest.wdc01.softlayer.com/downloads/test100.zip"
+	speed "SoftLayer, San Jose, USA   :" "http://speedtest.sjc01.softlayer.com/downloads/test100.zip"
+	speed "SoftLayer, Dallas, USA     :" "http://speedtest.dal01.softlayer.com/downloads/test100.zip"
+	speed "Vultr, New Jersey, USA     :" "http://nj-us-ping.vultr.com/vultr.com.100MB.bin"
+	speed "Vultr, Seattle, USA        :" "http://wa-us-ping.vultr.com/vultr.com.100MB.bin"
+	speed "Vultr, Dallas, USA         :" "http://tx-us-ping.vultr.com/vultr.com.100MB.bin"
+	speed "Vultr, Los Angeles, USA    :" "https://lax-ca-us-ping.vultr.com/vultr.com.100MB.bin"
+	speed "Ramnode, New York, USA     :" "http://lg.nyc.ramnode.com/static/100MB.test"
+	speed "Ramnode, Atlanta, USA      :" "http://lg.atl.ramnode.com/static/100MB.test"
+	speed "OVH, Beauharnois, Canada   :" "http://bhs.proof.ovh.net/files/100Mio.dat"
 	echo ""
 }
 
+# 9 location (900MB)
 europespeedtest () {
-	echo ""
-	echo " $(tput setaf 6)## Europe Speedtest$(tput sgr0)"
-	es1=$( wget -O /dev/null http://149.3.140.170/100.log 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " RedStation, Gosport, UK: $es1"
-	
-	es2=$( wget -O /dev/null http://se.edis.at/100MB.test 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " EDIS, Stockholm, Sweden: $es2"
-	
-	es3=$( wget -O /dev/null http://rbx.proof.ovh.net/files/100Mio.dat 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " OVH, Roubaix, France: $es3"
-	
-	es5=$( wget -O /dev/null http://mirrors.prometeus.net/test/test100.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Prometeus, Milan, Italy: $es5"
-	
-	es6=$( wget -O /dev/null http://mirror.de.leaseweb.net/speedtest/100mb.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " LeaseWeb, Frankfurt, Germany: $es6"
-	
-	es7=$( wget -O /dev/null http://mirror.i3d.net/100mb.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Interactive3D, Amsterdam, NL: $es7"
-	
-	es8=$( wget -O /dev/null http://lon-gb-ping.vultr.com/vultr.com.100MB.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Vultr, London, UK: $es8"
-	
-	es9=$( wget -O /dev/null http://ams-nl-ping.vultr.com/vultr.com.100MB.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Vultr, Amsterdam, NL: $es9"
-	echo ""
+	echo "" | tee -a $log
+	echostyle "## Europe Speedtest"
+	echo "" | tee -a $log
+	speed "Vultr, London, UK            :" "http://lon-gb-ping.vultr.com/vultr.com.100MB.bin"
+	speed "LeaseWeb, Frankfurt, Germany :" "http://mirror.de.leaseweb.net/speedtest/100mb.bin"
+	speed "Hetzner, Germany             :" "https://speed.hetzner.de/100MB.bin"
+	speed "Ramnode, Alblasserdam, NL    :" "http://lg.nl.ramnode.com/static/100MB.test"
+	speed "Vultr, Amsterdam, NL         :" "http://ams-nl-ping.vultr.com/vultr.com.100MB.bin"
+	speed "EDIS, Stockholm, Sweden      :" "http://se.edis.at/100MB.test"
+	speed "OVH, Roubaix, France         :" "http://rbx.proof.ovh.net/files/100Mio.dat"
+	speed "Online, France               :" "http://ping.online.net/100Mo.dat"
+	speed "Prometeus, Milan, Italy      :" "http://mirrors.prometeus.net/test/test100.bin"
+	echo "" | tee -a $log
 }
 
+# 4 location (200MB)
+pacificpeedtest () {
+	echo "" | tee -a $log
+	echostyle "## Pacific Speedtest"
+	echo "" | tee -a $log
+	speed "Sydney, Australia     :" "https://syd-au-ping.vultr.com/vultr.com.100MB.bin"
+	speed "Lagoon, New Caledonia :" "http://mirror.lagoon.nc/speedtestfiles/test50M.bin"
+	speed "Hosteasy, Moldova     :" "http://mirror.as43289.net/speedtest/100mb.bin"
+	speed "Prima, Argentina      :" "http://sftp.fibertel.com.ar/services/file-50MB.img"
+	echo "" | tee -a $log
+}
+
+# 4 location (400MB)
 asiaspeedtest () {
-	echo ""
-	echo " $(tput setaf 6)## Asia Speedtest$(tput sgr0)"
-	as1=$( wget -O /dev/null http://speedtest.sng01.softlayer.com/downloads/test100.zip 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " SoftLayer, Singapore, Singapore $as1"
-	
-	as2=$( wget -O /dev/null http://speedtest.singapore.linode.com/100MB-singapore.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Linode, Singapore, Singapore $as2"
-	
-	as3=$( wget -O /dev/null http://speedtest.tokyo.linode.com/100MB-tokyo.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Linode, Tokyo, Japan: $as3"
-	
-	as4=$( wget -O /dev/null http://hnd-jp-ping.vultr.com/vultr.com.100MB.bin 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}' )
-	echo " Vultr, Tokyo, Japan: $as4"
-	echo ""
+	echo "" | tee -a $log
+	echostyle "## Asia Speedtest"
+	echo "" | tee -a $log
+	speed "SoftLayer, Singapore :" "http://speedtest.sng01.softlayer.com/downloads/test100.zip"
+	speed "Linode, Tokyo, Japan :" "http://speedtest.tokyo.linode.com/100MB-tokyo.bin"
+	speed "Linode, Singapore    :" "http://speedtest.singapore.linode.com/100MB-singapore.bin"
+	speed "Vultr, Tokyo, Japan  :" "http://hnd-jp-ping.vultr.com/vultr.com.100MB.bin"
+	echo "" | tee -a $log
+}
+
+freedisk() {
+	# check free space
+	freespace=$( df -m . | awk 'NR==2 {print $4}' )
+	if [[ $freespace -ge 1024 ]]; then
+		printf "%s" $((1024*2))
+	elif [[ $freespace -ge 512 ]]; then
+		printf "%s" $((512*2))
+	elif [[ $freespace -ge 256 ]]; then
+		printf "%s" $((256*2))
+	elif [[ $freespace -ge 128 ]]; then
+		printf "%s" $((128*2))
+	else
+		printf 1
+	fi
+}
+
+averageio() {
+	ioraw1=$( echo $1 | awk 'NR==1 {print $1}' )
+		[ "$(echo $1 | awk 'NR==1 {print $2}')" == "GB/s" ] && ioraw1=$( awk 'BEGIN{print '$ioraw1' * 1024}' )
+	ioraw2=$( echo $2 | awk 'NR==1 {print $1}' )
+		[ "$(echo $2 | awk 'NR==1 {print $2}')" == "GB/s" ] && ioraw2=$( awk 'BEGIN{print '$ioraw2' * 1024}' )
+	ioraw3=$( echo $3 | awk 'NR==1 {print $1}' )
+		[ "$(echo $3 | awk 'NR==1 {print $2}')" == "GB/s" ] && ioraw3=$( awk 'BEGIN{print '$ioraw3' * 1024}' )
+	ioall=$( awk 'BEGIN{print '$ioraw1' + '$ioraw2' + '$ioraw3'}' )
+	ioavg=$( awk 'BEGIN{printf "%.1f", '$ioall' / 3}' )
+	printf "%s" "$ioavg"
+}
+
+cpubench() {
+	if hash $1 2>/dev/null; then
+		io=$( ( dd if=/dev/zero bs=512K count=$2 | $1 ) 2>&1 | grep 'copied' | awk -F, '{io=$NF} END { print io}' )
+		if [[ $io != *"."* ]]; then
+			printf "  %4i %s" "${io% *}" "${io##* }"
+		else
+			printf "%4i.%s" "${io%.*}" "${io#*.}"
+		fi
+	else
+		printf " %s not found on system." "$1"
+	fi
 }
 
 iotest () {
-	echo ""
-	echo " $(tput setaf 6)## IO Test$(tput sgr0)"
-	io=$( ( dd if=/dev/zero of=test bs=64k count=16k conv=fdatasync && rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	echo " I/O Speed : $io"
-	
-	io=$( ( dd if=/dev/zero of=test bs=64k count=16k conv=fdatasync oflag=direct && rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	echo " I/O Direct : $io"
-	echo ""
-}
+	echo "" | tee -a $log
+	echostyle "## IO Test"
+	echo "" | tee -a $log
 
-installspeedtest () {
-	# Installing speed test
-	wget -q --no-check-certificate https://raw.github.com/sivel/speedtest-cli/master/speedtest_cli.py
-	chmod a+rx speedtest_cli.py
-	mv speedtest_cli.py /usr/local/bin/speedtest-cli
-	chown root:root /usr/local/bin/speedtest-cli
-	echo " Installing speedtest-cli script has been finished"
-	echo " speedtest-cli works with Python 2.4-3.4"
-	echo " Run 'bash bench -speed' to run speedtest" | sed $'s/bash bench -speed/\e[1m&\e[0m/'
-	echo ""
+	# start testing
+	writemb=$(freedisk)
+	if [[ $writemb -gt 512 ]]; then
+		writemb_size="$(( writemb / 2 / 2 ))MB"
+		writemb_cpu="$(( writemb / 2 ))"
+	else
+		writemb_size="$writemb"MB
+		writemb_cpu=$writemb
+	fi
+
+	# CPU Speed test
+	printf " CPU Speed:\n" | tee -a $log
+	printf "    bzip2 %s -" "$writemb_size" | tee -a $log
+	printf "%s\n" "$( cpubench bzip2 $writemb_cpu )" | tee -a $log 
+	printf "   sha256 %s -" "$writemb_size" | tee -a $log
+	printf "%s\n" "$( cpubench sha256sum $writemb_cpu )" | tee -a $log
+	printf "   md5sum %s -" "$writemb_size" | tee -a $log
+	printf "%s\n\n" "$( cpubench md5sum $writemb_cpu )" | tee -a $log
+
+	# Disk test
+	echo " Disk Speed ($writemb_size):" | tee -a $log
+	if [[ $writemb != "1" ]]; then
+		io=$( ( dd bs=512K count=$writemb if=/dev/zero of=test; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+		echo "   I/O Speed  -$io" | tee -a $log
+
+		io=$( ( dd bs=512K count=$writemb if=/dev/zero of=test oflag=dsync; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+		echo "   I/O Direct -$io" | tee -a $log
+	else
+		echo "   Not enough space to test." | tee -a $log
+	fi
+	echo "" | tee -a $log
+
+	# RAM Speed test
+	# set ram allocation for mount
+	tram_mb="$( free -m | grep Mem | awk 'NR=1 {print $2}' )"
+	if [[ tram_mb -gt 1900 ]]; then
+		sbram=1024M
+		sbcount=2048
+	else
+		sbram=$(( tram_mb / 2 ))M
+		sbcount=$tram_mb
+	fi
+	[[ -d $benchram ]] || mkdir $benchram
+	mount -t tmpfs -o size=$sbram tmpfs $benchram/
+	printf " RAM Speed (%sB):\n" "$sbram" | tee -a $log
+	iow1=$( ( dd if=/dev/zero of=$benchram/zero bs=512K count=$sbcount ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior1=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	iow2=$( ( dd if=/dev/zero of=$benchram/zero bs=512K count=$sbcount ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior2=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	iow3=$( ( dd if=/dev/zero of=$benchram/zero bs=512K count=$sbcount ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior3=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	echo "   Avg. write - $(averageio "$iow1" "$iow2" "$iow3") MB/s" | tee -a $log
+	echo "   Avg. read  - $(averageio "$ior1" "$ior2" "$ior3") MB/s" | tee -a $log
+	rm $benchram/zero
+	umount $benchram
+	rm -rf $benchram
+	echo "" | tee -a $log
 }
 
 speedtestresults () {
 	#Testing Speedtest
-	speedtest-cli --share
-	echo ""
+	if hash python 2>/dev/null; then
+		curl -Lso speedtest-cli https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py
+		python speedtest-cli --share | tee -a $log
+		rm -f speedtest-cli
+		echo ""
+	else
+		echo " Python is not installed."
+		echo " First install python, then re-run the script."
+		echo ""
+	fi
 }
 
-case $1 in
+startedon() {
+	echo "\$ $ARG" >> $log
+	echo "" | tee -a $log
+	benchstart=$(date +"%d-%b-%Y %H:%M:%S")
+	start_seconds=$(date +%s)
+	echo " Benchmark started on $benchstart" | tee -a $log
+}
+
+finishedon() {
+	end_seconds=$(date +%s)
+	echo " Benchmark finished in $((end_seconds-start_seconds)) seconds" | tee -a $log
+	echo "   results saved on $log"
+	echo "" | tee -a $log
+}
+
+sharetest() {
+	case $1 in
+	'ubuntu')
+		share_link=$( curl -v --data-urlencode "content@$log" -d "poster=bench.log" -d "syntax=text" "https://paste.ubuntu.com" 2>&1 | \
+			grep "Location" | awk '{print $3}' );;
+	'haste' )
+		share_link=$( curl -X POST -s -d "$(cat $log)" https://hastebin.com/documents | awk -F '"' '{print "https://hastebin.com/"$4}' );;
+	'clbin' )
+		share_link=$( cat $log | curl -sF 'clbin=<-' https://clbin.com );;
+	'ptpb' )
+		share_link=$( cat $log | curl -sF c=@- https://ptpb.pw/?u=1 );;
+	esac
+
+	# print result info
+	echo " Share result:"
+	echo " $share_link"
+	echo ""
+
+}
+
+case $CMD in
 	'-info'|'-information'|'--info'|'--information' )
 		systeminfo;;
 	'-io'|'-drivespeed'|'--io'|'--drivespeed' )
@@ -302,22 +498,36 @@ case $1 in
 		northamerciaspeedtest;;
 	'-europe'|'-eu'|'--europe'|'--eu' )
 		europespeedtest;;
+	'-pacific'|'--pacific' )
+		pacificpeedtest;;
 	'-asia'|'--asia' )
 		asiaspeedtest;;
 	'-cdn'|'--cdn' )
 		cdnspeedtest;;
 	'-b'|'--b' )
-		systeminfo; cdnspeedtest; iotest;;
+		startedon; systeminfo; cdnspeedtest; iotest; finishedon;;
 	'-a'|'-all'|'-bench'|'--a'|'--all'|'--bench' )
-		systeminfo; cdnspeedtest; northamerciaspeedtest; europespeedtest; asiaspeedtest; iotest;;
-	'-ispeed'|'-installspeed'|'-installspeedtest'|'--ispeed'|'--installspeed'|'--installspeedtest' )
-		installspeedtest;;
+		startedon; systeminfo; cdnspeedtest; northamerciaspeedtest;
+		europespeedtest; pacificpeedtest; asiaspeedtest; iotest; finishedon;;
 	'-speed'|'-speedtest'|'-speedcheck'|'--speed'|'--speedtest'|'--speedcheck' )
 		speedtestresults;;
-	'-help'|'--help' )
+	'-help'|'--help'|'help' )
 		prms;;
-	'-about'|'--about' )
+	'-about'|'--about'|'about' )
 		about;;
 	*)
 		howto;;
 esac
+
+case $PRM1 in
+	'-share'|'--share'|'share' )
+		if [[ $PRM2 == "" ]]; then
+			sharetest ubuntu
+		else
+			sharetest $PRM2
+		fi
+		;;
+esac
+
+# ring a bell
+printf '\007'

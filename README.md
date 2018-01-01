@@ -1,52 +1,55 @@
-#serverreview-benchmark
+## serverreview-benchmark
 
-<h5>Download</h5>
+##### Download
 
-<code>wget https://git.io/bench.sh && chmod +x bench.sh</code>
+`curl -LsO git.io/bench.sh; chmod +x bench.sh`
 
-<h5>Parameters</h5>
+##### Usage
 
-<p>System Information</p>
+`./bench.sh` `Arguments` `Parameters (Optional)`
 
-<p><code>./bench.sh -info</code></p>
+Example: `./bench.sh -b share`
 
-<p>I/O Test</p>
+##### Arguments
 
-<p><code>./bench.sh -io</code></p>
+`-info` # System Information
 
-<p>CDN Download (200MB)</p>
+`-io` # I/O Test
 
-<p><code>./bench.sh -cdn</code></p>
+`-cdn` # CDN Download (200MB)
 
-<p>North America Download (800MB)</p>
+`-northamerica` # North America Download (800MB)
 
-<p><code>./bench.sh -northamerica</code></p>
+`-europe` # Europe Download (900MB)
 
-<p>Europe Download (900MB)</p>
+`-asia` # Asia Download (400MB)
 
-<p><code>./bench.sh -europe</code></p>
+`-b` # System Info + CDN Download + I/O Test
 
-<p>Asia Download (400MB)</p>
+`-a` # All In One Command
 
-<p><code>./bench.sh -asia</code></p>
+`-speed` # Test from speedtest.net using speedtest cli
 
-<p>System Info + CDN Download + I/O Test</p>
+`-help` # Show help
 
-<p><code>./bench.sh -b</code></p>
+`-about` # Show about
 
-<p>All In One Command</p>
+##### Parameters
 
-<p><code>./bench.sh -a</code></p>
+`share`
 
-<p>Help</p>
+Ex: `./bench.sh -cdn share haste`
 
-<p><code>./bench.sh -help</code></p>
+Available option:
 
-<p>About</p>
+    `ubuntu` # upload results to ubuntu paste (default)
 
-<p><code>./bench.sh -about</code>
+    `haste` # upload results to hastebin
 
+    `clbin` # upload results to clbin
 
-<h6>Credits</h6>
+    `ptpb` # upload results to ptpb
 
-Thanks to @camarg for the the original script. Thanks to @dmmcintyre3 for the modified version. Thanks @Hidden_Refuge for update bench-sh-2.
+##### _Credits_
+
+Thanks to `@camarg` for the the original script. Thanks to `@dmmcintyre3` for the modified version. Thanks `@Hidden_Refuge` for update bench-sh-2.
