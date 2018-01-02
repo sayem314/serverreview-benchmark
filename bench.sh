@@ -9,7 +9,7 @@ about () {
 	echo "  ========================================================= "
 	echo "  \             Serverreview Benchmark Script             / "
 	echo "  \       Basic system info, I/O test and speedtest       / "
-	echo "  \               V 3.0.0  (01 Jan 2018)                  / "
+	echo "  \               V 3.0.1  (02 Jan 2018)                  / "
 	echo "  \             Created by Sayem Chowdhury                / "
 	echo "  ========================================================= "
 	echo ""
@@ -49,12 +49,21 @@ howto () {
 	echo ""
 }
 
+benchinit() {
+	if [[ ! hash curl 2>$NULL ]]; then
+		echo "missing dependency curl"
+		echo "please install curl first"
+		exit
+	fi
+}
+
 CMD="$1"
 PRM1="$2"
 PRM2="$3"
 log="$HOME/bench.log"
 ARG="$BASH_SOURCE $@"
 benchram="/mnt/tmpbenchram"
+NULL="/dev/null"
 true > $log
 
 cancel () {
@@ -72,11 +81,6 @@ cancel () {
 trap cancel SIGINT
 
 systeminfo () {
-	cpubits=$( uname -m )
-	hdd=$( df -h --total | grep 'total' | awk '{print $2}' )B
-	hddfree=$( df -h --total | grep 'total' | awk '{print $5}' )
-	fswap=$( free -m | grep Swap | awk 'NR=1 {print $4}' )MiB
-
 	# Systeminfo
 	echo "" | tee -a $log
 	echo " $(tput setaf 6)## System Information$(tput sgr0)"
@@ -84,13 +88,22 @@ systeminfo () {
 	echo "" | tee -a $log
 
 	# OS Information (Name)
-	if [ "$cpubits" == 'x86_64' ]; then
+	cpubits=$( uname -m )
+	if echo $cpubits | grep -q 64; then
 		bits=" (64 bit)"
-	else
+	elif echo $cpubits | grep -q 86; then
 		bits=" (32 bit)"
+	elif echo $cpubits | grep -q armv5; then
+		bits=" (armv5)"
+	elif echo $cpubits | grep -q armv6l; then
+		bits=" (armv6l)"
+	elif echo $cpubits | grep -q armv7l; then
+		bits=" (armv7l)"
+	else
+		bits="unknown"
 	fi
 
-	if hash lsb_release 2>/dev/null; then
+	if hash lsb_release 2>$NULL; then
 		soalt=$(lsb_release -d)
 		echo -e " OS Name     : "${soalt:13} $bits | tee -a $log
 	else
@@ -123,7 +136,7 @@ systeminfo () {
 	sleep 0.1
 
 	#Detect virtualization
-	if hash ifconfig 2>/dev/null; then
+	if hash ifconfig 2>$NULL; then
 		eth=$(ifconfig)
 	fi
 	virtualx=$(dmesg)
@@ -171,7 +184,8 @@ systeminfo () {
 
 	# RAM Information
 	tram="$( free -m | grep Mem | awk 'NR=1 {print $2}' ) MiB"
-	fram="$( free -m | grep Mem | awk 'NR=1 {print $4}' ) MiB"
+	fram="$( free -m | grep Mem | awk 'NR=1 {print $7}' ) MiB"
+	fswap=$( free -m | grep Swap | awk 'NR=1 {print $4}' )MiB
 	echo " Total RAM   : $tram (Free $fram)" | tee -a $log
 	sleep 0.1
 
@@ -184,6 +198,10 @@ systeminfo () {
 		echo " Total SWAP  : $tswap (Free $fswap)" | tee -a $log
 	fi
 	sleep 0.1
+
+	# HDD information
+	hdd=$( df -h --total --local -x tmpfs | grep 'total' | awk '{print $2}' )B
+	hddfree=$( df -h --total | grep 'total' | awk '{print $5}' )
 	echo " Total Space : $hdd ($hddfree used)" | tee -a $log
 	sleep 0.1
 
@@ -203,7 +221,7 @@ systeminfo () {
 }
 
 echostyle(){
-	if hash tput 2>/dev/null; then
+	if hash tput 2>$NULL; then
 		echo " $(tput setaf 6)$1$(tput sgr0)"
 		echo " $1" >> $log
 	else
@@ -213,15 +231,15 @@ echostyle(){
 
 FormatBytes() {
 	bytes=${1%.*}
-	local Mbps=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 / 1024 * 8 } END { if (NR == 0) { print "error" } }' )
+	local Mbps=$( printf "%s" "$bytes" | awk '{ printf "%.2f", $0 / 1024 / 1024 * 8 } END { if (NR == 0) { print "error" } }' )
 	if [[ $bytes -lt 1000 ]]; then
-		printf "%8i B/s"  $bytes
+		printf "%8i B/s |      N/A     "  $bytes
 	elif [[ $bytes -lt 1000000 ]]; then
-		local KiBs=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 } END { if (NR == 0) { print "error" } }' )
+		local KiBs=$( printf "%s" "$bytes" | awk '{ printf "%.2f", $0 / 1024 } END { if (NR == 0) { print "error" } }' )
 		printf "%7s KiB/s | %7s Mbps" "$KiBs" "$Mbps"
 	else
 		# awk way for accuracy
-		local MiBs=$( printf $bytes | awk '{ printf "%.2f", $0 / 1024 / 1024 } END { if (NR == 0) { print "error" } }' )
+		local MiBs=$( printf "%s" "$bytes" | awk '{ printf "%.2f", $0 / 1024 / 1024 } END { if (NR == 0) { print "error" } }' )
 		printf "%7s MiB/s | %7s Mbps" "$MiBs" "$Mbps"
 
 		# bash way
@@ -231,8 +249,8 @@ FormatBytes() {
 
 pingtest() {
 	# ping one time
-	ping_link=$( echo ${1#*//} | cut -d"/" -f1 )
-	ping_ms=$( ping -w1 -c1 $ping_link | grep 'rtt' | cut -d"/" -f5 )
+	local ping_link=$( echo ${1#*//} | cut -d"/" -f1 )
+	local ping_ms=$( ping -w1 -c1 $ping_link | grep 'rtt' | cut -d"/" -f5 )
 
 	# get download speed and print
 	if [[ $ping_ms == "" ]]; then
@@ -249,7 +267,7 @@ speed() {
 	printf "%s" " $1" | tee -a $log
 
 	# get download speed and print
-	C_DL=$( curl -m 4 -w '%{speed_download}\n' -o /dev/null -s "$2" )
+	C_DL=$( curl -m 4 -w '%{speed_download}\n' -o $NULL -s "$2" )
 	printf "%s\n" "$(FormatBytes $C_DL) $(pingtest $2)" | tee -a $log
 }
 
@@ -270,7 +288,7 @@ cdnspeedtest () {
 	printf " Gdrive   :"  | tee -a $log
 	curl -c $TMP_COOKIES -o $TMP_FILE -s "https://$DRIVE/uc?id=$FILE_ID&export=download"
 	D_ID=$( grep "confirm=" < $TMP_FILE | awk -F "confirm=" '{ print $NF }' | awk -F "&amp" '{ print $1 }' )
-	C_DL=$( curl -m 4 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o /dev/null \
+	C_DL=$( curl -m 4 -Lb $TMP_COOKIES -w '%{speed_download}\n' -o $NULL \
 		-s "https://$DRIVE/uc?export=download&confirm=$D_ID&id=$FILE_ID" )
 	printf "%s\n" "$(FormatBytes $C_DL) $(pingtest $DRIVE)" | tee -a $log
 	echo "" | tee -a $log
@@ -312,9 +330,9 @@ europespeedtest () {
 }
 
 # 4 location (200MB)
-pacificpeedtest () {
+exoticpeedtest () {
 	echo "" | tee -a $log
-	echostyle "## Pacific Speedtest"
+	echostyle "## Exotic Speedtest"
 	echo "" | tee -a $log
 	speed "Sydney, Australia     :" "https://syd-au-ping.vultr.com/vultr.com.100MB.bin"
 	speed "Lagoon, New Caledonia :" "http://mirror.lagoon.nc/speedtestfiles/test50M.bin"
@@ -364,7 +382,7 @@ averageio() {
 }
 
 cpubench() {
-	if hash $1 2>/dev/null; then
+	if hash $1 2>$NULL; then
 		io=$( ( dd if=/dev/zero bs=512K count=$2 | $1 ) 2>&1 | grep 'copied' | awk -F, '{io=$NF} END { print io}' )
 		if [[ $io != *"."* ]]; then
 			printf "  %4i %s" "${io% *}" "${io##* }"
@@ -427,11 +445,11 @@ iotest () {
 	mount -t tmpfs -o size=$sbram tmpfs $benchram/
 	printf " RAM Speed (%sB):\n" "$sbram" | tee -a $log
 	iow1=$( ( dd if=/dev/zero of=$benchram/zero bs=512K count=$sbcount ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	ior1=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior1=$( ( dd if=$benchram/zero of=$NULL bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
 	iow2=$( ( dd if=/dev/zero of=$benchram/zero bs=512K count=$sbcount ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	ior2=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior2=$( ( dd if=$benchram/zero of=$NULL bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
 	iow3=$( ( dd if=/dev/zero of=$benchram/zero bs=512K count=$sbcount ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
-	ior3=$( ( dd if=$benchram/zero of=/dev/null bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
+	ior3=$( ( dd if=$benchram/zero of=$NULL bs=512K count=$sbcount; rm -f test ) 2>&1 | awk -F, '{io=$NF} END { print io}' )
 	echo "   Avg. write - $(averageio "$iow1" "$iow2" "$iow3") MB/s" | tee -a $log
 	echo "   Avg. read  - $(averageio "$ior1" "$ior2" "$ior3") MB/s" | tee -a $log
 	rm $benchram/zero
@@ -442,7 +460,7 @@ iotest () {
 
 speedtestresults () {
 	#Testing Speedtest
-	if hash python 2>/dev/null; then
+	if hash python 2>$NULL; then
 		curl -Lso speedtest-cli https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py
 		python speedtest-cli --share | tee -a $log
 		rm -f speedtest-cli
@@ -477,9 +495,9 @@ sharetest() {
 	'haste' )
 		share_link=$( curl -X POST -s -d "$(cat $log)" https://hastebin.com/documents | awk -F '"' '{print "https://hastebin.com/"$4}' );;
 	'clbin' )
-		share_link=$( cat $log | curl -sF 'clbin=<-' https://clbin.com );;
+		share_link=$( curl -sF 'clbin=<-' https://clbin.com < $log );;
 	'ptpb' )
-		share_link=$( cat $log | curl -sF c=@- https://ptpb.pw/?u=1 );;
+		share_link=$( curl -sF c=@- https://ptpb.pw/?u=1 < $log );;
 	esac
 
 	# print result info
@@ -495,22 +513,22 @@ case $CMD in
 	'-io'|'-drivespeed'|'--io'|'--drivespeed' )
 		iotest;;
 	'-northamercia'|'-na'|'--northamercia'|'--na' )
-		northamerciaspeedtest;;
+		benchinit; northamerciaspeedtest;;
 	'-europe'|'-eu'|'--europe'|'--eu' )
-		europespeedtest;;
-	'-pacific'|'--pacific' )
-		pacificpeedtest;;
+		benchinit; europespeedtest;;
+	'-exotic'|'--exotic' )
+		benchinit; exoticpeedtest;;
 	'-asia'|'--asia' )
-		asiaspeedtest;;
+		benchinit; asiaspeedtest;;
 	'-cdn'|'--cdn' )
-		cdnspeedtest;;
+		benchinit; cdnspeedtest;;
 	'-b'|'--b' )
-		startedon; systeminfo; cdnspeedtest; iotest; finishedon;;
+		benchinit; startedon; systeminfo; cdnspeedtest; iotest; finishedon;;
 	'-a'|'-all'|'-bench'|'--a'|'--all'|'--bench' )
-		startedon; systeminfo; cdnspeedtest; northamerciaspeedtest;
-		europespeedtest; pacificpeedtest; asiaspeedtest; iotest; finishedon;;
+		benchinit; startedon; systeminfo; cdnspeedtest; northamerciaspeedtest;
+		europespeedtest; exoticpeedtest; asiaspeedtest; iotest; finishedon;;
 	'-speed'|'-speedtest'|'-speedcheck'|'--speed'|'--speedtest'|'--speedcheck' )
-		speedtestresults;;
+		benchinit; speedtestresults;;
 	'-help'|'--help'|'help' )
 		prms;;
 	'-about'|'--about'|'about' )
