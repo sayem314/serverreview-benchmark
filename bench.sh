@@ -50,7 +50,7 @@ howto () {
 }
 
 benchinit() {
-	if [[ ! hash curl 2>$NULL ]]; then
+	if ! hash curl 2>$NULL; then
 		echo "missing dependency curl"
 		echo "please install curl first"
 		exit
