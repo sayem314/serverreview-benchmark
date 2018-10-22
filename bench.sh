@@ -283,7 +283,7 @@ cdnspeedtest () {
 	TMP_COOKIES="/tmp/cookies.txt"
 	TMP_FILE="/tmp/gdrive"
 	DRIVE="drive.google.com"
-	FILE_ID="1EcDdTYwJNBIXx_BL6pzEkjTD_pkCbYni"
+	FILE_ID="0B1MVW1mFO2zmZHVRWEQ3Rkc3SVE"
 
 	printf " Gdrive   :"  | tee -a $log
 	curl -c $TMP_COOKIES -o $TMP_FILE -s "https://$DRIVE/uc?id=$FILE_ID&export=download"
