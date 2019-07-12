@@ -9,7 +9,7 @@ about () {
 	echo "  ========================================================= "
 	echo "  \             Serverreview Benchmark Script             / "
 	echo "  \       Basic system info, I/O test and speedtest       / "
-	echo "  \               V 3.0.1  (02 Jan 2018)                  / "
+	echo "  \               V 3.0.2  (12 Jul 2019)                  / "
 	echo "  \             Created by Sayem Chowdhury                / "
 	echo "  ========================================================= "
 	echo ""
@@ -271,13 +271,12 @@ speed() {
 	printf "%s\n" "$(FormatBytes $C_DL) $(pingtest $2)" | tee -a $log
 }
 
-# 3 location (300MB)
+# 2 location (200MB)
 cdnspeedtest () {
 	echo "" | tee -a $log
 	echostyle "## CDN Speedtest"
 	echo "" | tee -a $log
 	speed "CacheFly :" "http://cachefly.cachefly.net/100mb.test"
-	speed "CDN.net  :" "http://993660212.r.worldcdn.net/100MB.bin"
 
 	# google drive speed test
 	TMP_COOKIES="/tmp/cookies.txt"
