@@ -346,7 +346,7 @@ asiaspeedtest () {
 	echostyle "## Asia Speedtest"
 	echo "" | tee -a $log
 	speed "SoftLayer, Singapore :" "http://speedtest.sng01.softlayer.com/downloads/test100.zip"
-	speed "Linode, Tokyo, Japan :" "http://speedtest.tokyo.linode.com/100MB-tokyo.bin"
+	speed "Linode, Tokyo, Japan :" "http://speedtest.tokyo2.linode.com/100MB-tokyo2.bin"
 	speed "Linode, Singapore    :" "http://speedtest.singapore.linode.com/100MB-singapore.bin"
 	speed "Vultr, Tokyo, Japan  :" "http://hnd-jp-ping.vultr.com/vultr.com.100MB.bin"
 	echo "" | tee -a $log
