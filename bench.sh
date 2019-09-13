@@ -9,7 +9,7 @@ about () {
 	echo "  ========================================================= "
 	echo "  \             Serverreview Benchmark Script             / "
 	echo "  \       Basic system info, I/O test and speedtest       / "
-	echo "  \               V 3.0.2  (12 Jul 2019)                  / "
+	echo "  \               V 3.0.3  (13 Sep 2019)                  / "
 	echo "  \             Created by Sayem Chowdhury                / "
 	echo "  ========================================================= "
 	echo ""
@@ -298,7 +298,7 @@ northamerciaspeedtest () {
 	echo "" | tee -a $log
 	echostyle "## North America Speedtest"
 	echo "" | tee -a $log
-	speed "Softlayer, Washington, USA :" "http://speedtest.wdc01.softlayer.com/downloads/test100.zip"
+	speed "Softlayer, Washington, USA :" "http://speedtest.wdc04.softlayer.com/downloads/test100.zip"
 	speed "SoftLayer, San Jose, USA   :" "http://speedtest.sjc01.softlayer.com/downloads/test100.zip"
 	speed "SoftLayer, Dallas, USA     :" "http://speedtest.dal01.softlayer.com/downloads/test100.zip"
 	speed "Vultr, New Jersey, USA     :" "http://nj-us-ping.vultr.com/vultr.com.100MB.bin"
